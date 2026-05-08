@@ -3,9 +3,9 @@
 A [DALi](https://github.com/dalihub)-based renderer for the
 [A2UI](https://a2ui.dev) protocol — the open generative UI specification.
 
-`a2ui-dali` lets a DALi/Tizen application receive A2UI v0.9 messages from
-an agent (typically over the [A2A](https://a2a-protocol.org) protocol) and
-render them as native DALi views in real time.
+`a2ui-dali` consumes A2UI v0.9 message streams and renders them as
+native DALi views, applying `updateComponents` and `updateDataModel`
+batches incrementally as they arrive.
 
 ## Status
 
