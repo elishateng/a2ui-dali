@@ -1,0 +1,148 @@
+/* Copyright (c) 2026 Samsung Electronics Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "surface-group-model.h"
+#include <dali/integration-api/debug.h>
+#include <algorithm>
+
+namespace A2ui
+{
+
+SurfaceGroupModel::SurfaceGroupModel()
+{
+}
+
+SurfaceModel& SurfaceGroupModel::GetOrCreateSurface(const std::string& surfaceId,
+                                                      const std::string& catalogId)
+{
+  auto it = mSurfaces.find(surfaceId);
+  if(it == mSurfaces.end())
+  {
+    auto [insertIt, ok] = mSurfaces.emplace(surfaceId, SurfaceModel());
+    insertIt->second.Create(surfaceId, catalogId);
+
+    DALI_LOG_ERROR("[A2UI] SurfaceGroup: created surface '%s' (catalog: %s), total: %zu\n",
+                   surfaceId.c_str(), catalogId.c_str(), mSurfaces.size());
+
+    if(mOnSurfaceChange) mOnSurfaceChange(surfaceId, true);
+    return insertIt->second;
+  }
+  return it->second;
+}
+
+SurfaceModel* SurfaceGroupModel::GetSurface(const std::string& surfaceId)
+{
+  auto it = mSurfaces.find(surfaceId);
+  return (it != mSurfaces.end()) ? &it->second : nullptr;
+}
+
+const SurfaceModel* SurfaceGroupModel::GetSurface(const std::string& surfaceId) const
+{
+  auto it = mSurfaces.find(surfaceId);
+  return (it != mSurfaces.end()) ? &it->second : nullptr;
+}
+
+void SurfaceGroupModel::DeleteSurface(const std::string& surfaceId)
+{
+  auto it = mSurfaces.find(surfaceId);
+  if(it != mSurfaces.end())
+  {
+    it->second.Delete();
+    mSurfaces.erase(it);
+    mPlacements.erase(surfaceId);
+
+    DALI_LOG_ERROR("[A2UI] SurfaceGroup: deleted surface '%s', remaining: %zu\n",
+                   surfaceId.c_str(), mSurfaces.size());
+
+    if(mOnSurfaceChange) mOnSurfaceChange(surfaceId, false);
+  }
+}
+
+bool SurfaceGroupModel::HasSurface(const std::string& surfaceId) const
+{
+  return mSurfaces.find(surfaceId) != mSurfaces.end();
+}
+
+std::vector<std::string> SurfaceGroupModel::GetSurfaceIds() const
+{
+  std::vector<std::string> ids;
+  ids.reserve(mSurfaces.size());
+  for(const auto& [id, surface] : mSurfaces)
+  {
+    ids.push_back(id);
+  }
+  return ids;
+}
+
+SurfaceGroupModel::SurfacePlacement SurfaceGroupModel::DeterminePlacement(
+  const std::string& surfaceId) const
+{
+  // Check explicit placement first
+  auto it = mPlacements.find(surfaceId);
+  if(it != mPlacements.end())
+  {
+    return it->second;
+  }
+
+  // Rule-based placement from surfaceId naming
+  if(surfaceId == "sidebar" || surfaceId == "nav" ||
+     surfaceId.find("sidebar") != std::string::npos)
+  {
+    return {Zone::SIDEBAR, 0.3f};
+  }
+  if(surfaceId == "notification" || surfaceId == "toast" ||
+     surfaceId.find("notification") != std::string::npos)
+  {
+    return {Zone::NOTIFICATION, 0.0f};
+  }
+  if(surfaceId.find("overlay") != std::string::npos ||
+     surfaceId.find("modal") != std::string::npos)
+  {
+    return {Zone::OVERLAY, 0.0f};
+  }
+
+  return {Zone::MAIN, 1.0f};
+}
+
+void SurfaceGroupModel::SetPlacement(const std::string& surfaceId, SurfacePlacement placement)
+{
+  mPlacements[surfaceId] = placement;
+}
+
+std::vector<std::string> SurfaceGroupModel::GetSurfacesInZone(Zone zone) const
+{
+  std::vector<std::string> result;
+  for(const auto& [id, surface] : mSurfaces)
+  {
+    SurfacePlacement placement = DeterminePlacement(id);
+    if(placement.zone == zone)
+    {
+      result.push_back(id);
+    }
+  }
+  return result;
+}
+
+void SurfaceGroupModel::Reset()
+{
+  for(auto& [id, surface] : mSurfaces)
+  {
+    surface.Reset();
+  }
+  mSurfaces.clear();
+  mPlacements.clear();
+}
+
+} // namespace A2ui

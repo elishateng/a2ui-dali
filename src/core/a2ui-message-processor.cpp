@@ -1,0 +1,286 @@
+/* Copyright (c) 2026 Samsung Electronics Co., Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "a2ui-message-processor.h"
+#include "a2ui-sanitizer.h"
+#include <dali/integration-api/debug.h>
+#include <dali-ui-foundation/devel-api/builder/json-parser.h>
+#include <fstream>
+#include <sstream>
+
+using Dali::Ui::JsonParser;
+using Dali::Ui::TreeNode;
+
+namespace A2ui
+{
+
+bool A2uiMessageProcessor::ProcessLine(const std::string& line, SurfaceModel& surface)
+{
+  if(line.empty())
+  {
+    return true; // Skip empty lines
+  }
+
+  // Phase 4: Validate data size
+  if(!A2uiSanitizer::ValidateDataSize(line.size()))
+  {
+    mLastError = "Message exceeds maximum data size";
+    return false;
+  }
+
+  // Parse JSON
+  JsonParser parser = JsonParser::New();
+  if(!parser.Parse(line))
+  {
+    mLastError = "JSON parse error at column " +
+                 std::to_string(parser.GetErrorPosition()) + ": " +
+                 parser.GetErrorDescription();
+    DALI_LOG_ERROR("[A2UI] %s\n", mLastError.c_str());
+    return false;
+  }
+
+  const TreeNode* root = parser.GetRoot();
+  if(!root)
+  {
+    mLastError = "Empty JSON object";
+    return false;
+  }
+
+  // Check version
+  const TreeNode* versionNode = root->Find("version");
+  if(versionNode && versionNode->GetType() == TreeNode::STRING)
+  {
+    // Accept v0.9 (primary target) and other versions gracefully
+    // In Phase 3, A2uiValidator will enforce strict version checking
+  }
+
+  // Route by message type
+  const TreeNode* createSurface = root->Find("createSurface");
+  if(createSurface)
+  {
+    return OnCreateSurface(*createSurface, surface, parser);
+  }
+
+  const TreeNode* updateComponents = root->Find("updateComponents");
+  if(updateComponents)
+  {
+    return OnUpdateComponents(*updateComponents, surface, parser);
+  }
+
+  const TreeNode* updateDataModel = root->Find("updateDataModel");
+  if(updateDataModel)
+  {
+    return OnUpdateDataModel(*updateDataModel, surface);
+  }
+
+  const TreeNode* deleteSurface = root->Find("deleteSurface");
+  if(deleteSurface)
+  {
+    return OnDeleteSurface(*deleteSurface, surface);
+  }
+
+  // Phase 4: callFunction (server → client)
+  const TreeNode* callFunction = root->Find("callFunction");
+  if(callFunction)
+  {
+    return OnCallFunction(*callFunction, surface);
+  }
+
+  mLastError = "Unknown message type";
+  DALI_LOG_ERROR("[A2UI] Unknown message type in line\n");
+  return false;
+}
+
+bool A2uiMessageProcessor::ProcessFile(const std::string& filePath, SurfaceModel& surface)
+{
+  std::ifstream file(filePath);
+  if(!file.is_open())
+  {
+    mLastError = "Failed to open file: " + filePath;
+    DALI_LOG_ERROR("[A2UI] %s\n", mLastError.c_str());
+    return false;
+  }
+
+  std::string line;
+  int lineNum = 0;
+  while(std::getline(file, line))
+  {
+    lineNum++;
+    if(line.empty()) continue;
+
+    if(!ProcessLine(line, surface))
+    {
+      mLastError = "Line " + std::to_string(lineNum) + ": " + mLastError;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool A2uiMessageProcessor::ProcessText(const std::string& text, SurfaceModel& surface)
+{
+  std::istringstream stream(text);
+  std::string line;
+  int lineNum = 0;
+
+  while(std::getline(stream, line))
+  {
+    lineNum++;
+    if(line.empty()) continue;
+
+    if(!ProcessLine(line, surface))
+    {
+      mLastError = "Line " + std::to_string(lineNum) + ": " + mLastError;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool A2uiMessageProcessor::OnCreateSurface(const TreeNode& msgBody, SurfaceModel& surface,
+                                            JsonParser parser)
+{
+  const TreeNode* surfaceIdNode = msgBody.Find("surfaceId");
+  const TreeNode* catalogIdNode = msgBody.Find("catalogId");
+
+  std::string surfaceId = (surfaceIdNode && surfaceIdNode->GetType() == TreeNode::STRING)
+                          ? surfaceIdNode->GetString() : "default";
+  std::string catalogId = (catalogIdNode && catalogIdNode->GetType() == TreeNode::STRING)
+                          ? catalogIdNode->GetString() : "basic";
+
+  surface.Create(surfaceId, catalogId);
+
+  // Phase 2: sendDataModel flag
+  const TreeNode* sendDmNode = msgBody.Find("sendDataModel");
+  if(sendDmNode && sendDmNode->GetType() == TreeNode::BOOLEAN)
+  {
+    surface.SetSendDataModel(sendDmNode->GetBoolean());
+  }
+
+  surface.KeepParser(parser);
+  return true;
+}
+
+bool A2uiMessageProcessor::OnUpdateComponents(const TreeNode& msgBody, SurfaceModel& surface,
+                                               JsonParser parser)
+{
+  if(!surface.IsCreated())
+  {
+    mLastError = "updateComponents before createSurface";
+    DALI_LOG_ERROR("[A2UI] %s\n", mLastError.c_str());
+    return false;
+  }
+
+  const TreeNode* componentsNode = msgBody.Find("components");
+  if(!componentsNode)
+  {
+    mLastError = "updateComponents missing 'components' array";
+    return false;
+  }
+
+  // Keep parser alive so TreeNode pointers in ComponentModel remain valid
+  surface.KeepParser(parser);
+  surface.UpdateComponents(*componentsNode);
+  return true;
+}
+
+bool A2uiMessageProcessor::OnUpdateDataModel(const TreeNode& msgBody, SurfaceModel& surface)
+{
+  if(!surface.IsCreated())
+  {
+    mLastError = "updateDataModel before createSurface";
+    DALI_LOG_ERROR("[A2UI] %s\n", mLastError.c_str());
+    return false;
+  }
+
+  const TreeNode* pathNode  = msgBody.Find("path");
+  const TreeNode* valueNode = msgBody.Find("value");
+
+  std::string path = "/";
+  if(pathNode && pathNode->GetType() == TreeNode::STRING)
+  {
+    path = pathNode->GetString();
+  }
+
+  if(!valueNode)
+  {
+    mLastError = "updateDataModel missing 'value'";
+    return false;
+  }
+
+  surface.UpdateDataModel(path, *valueNode);
+  return true;
+}
+
+bool A2uiMessageProcessor::OnDeleteSurface(const TreeNode& msgBody, SurfaceModel& surface)
+{
+  surface.Delete();
+  return true;
+}
+
+bool A2uiMessageProcessor::OnCallFunction(const TreeNode& msgBody, SurfaceModel& surface)
+{
+  // Extract functionCallId
+  const TreeNode* callIdNode = msgBody.Find("functionCallId");
+  std::string functionCallId;
+  if(callIdNode && callIdNode->GetType() == TreeNode::STRING)
+  {
+    functionCallId = callIdNode->GetString();
+  }
+
+  // Extract function call spec — the call spec is directly in msgBody
+  // A2UI v0.9: {"callFunction": {"functionCallId":"fc_001", "call":"formatDate", "args":{...}, "wantResponse":true}}
+  // The "call" + "args" fields are the function spec, directly usable by ExpressionParser
+  const TreeNode* callNode = msgBody.Find("call");
+  if(!callNode)
+  {
+    mLastError = "callFunction message missing 'call' field for function spec";
+    DALI_LOG_ERROR("[A2UI] %s\n", mLastError.c_str());
+    return false;
+  }
+
+  // Check wantResponse
+  const TreeNode* wantResponseNode = msgBody.Find("wantResponse");
+  bool wantResponse = wantResponseNode && wantResponseNode->GetType() == TreeNode::BOOLEAN
+                      && wantResponseNode->GetBoolean();
+
+  // Execute function via ExpressionParser
+  std::string result;
+  if(mExprParser)
+  {
+    DataContext ctx(surface.GetDataModel());
+    // msgBody itself contains "call" and "args" — pass it directly to Evaluate
+    result = mExprParser->Evaluate(msgBody, ctx);
+    DALI_LOG_ERROR("[A2UI] callFunction '%s' → result: '%s'\n",
+                   functionCallId.c_str(), result.c_str());
+  }
+  else
+  {
+    DALI_LOG_ERROR("[A2UI] callFunction: no ExpressionParser set\n");
+    result = "";
+  }
+
+  // Send response if requested
+  if(wantResponse && mFunctionResponseCb)
+  {
+    mFunctionResponseCb(functionCallId, result);
+  }
+
+  return true;
+}
+
+} // namespace A2ui
