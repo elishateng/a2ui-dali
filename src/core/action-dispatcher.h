@@ -28,8 +28,8 @@ namespace A2ui
  * Dispatches A2UI client actions.
  *
  * Resolves action context bindings and emits the serialized `action` JSON
- * through the SendCallback. The caller (typically PlaygroundController)
- * forwards it to A2aTransportAdapter::SendAction for delivery to the server.
+ * through SendCallback. The caller is responsible for delivering the JSON
+ * to the agent over whichever transport is in use (e.g. A2A, WebSocket).
  */
 class ActionDispatcher
 {

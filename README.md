@@ -105,8 +105,15 @@ Dali::Ui::View view = renderer.Render(surface);
 window.Add(view);
 ```
 
-For live agents, `src/transport/a2a-transport.h` provides a JSON-RPC +
-SSE transport that speaks the A2A protocol.
+### Transports
+
+`a2ui-dali` itself is transport-agnostic — the library only consumes
+A2UI messages and exposes outgoing actions through a callback. Agents
+typically deliver messages over the [A2A](https://a2a-protocol.org)
+protocol; a reference A2A client is provided under
+[`examples/a2a-integration/`](examples/a2a-integration) for projects
+that want to wire one up directly. WebSocket, file-based, or custom
+transports can be plugged in the same way.
 
 ## Architecture
 
@@ -127,11 +134,10 @@ SSE transport that speaks the A2A protocol.
       └───────────────┘                 └─────────────────┘
 ```
 
-| Module                 | Responsibility                                |
-|------------------------|-----------------------------------------------|
-| `core/`                | Message parsing, surface/data models, expression evaluation, diff engine, template cache |
-| `renderer/`            | A2UI component → DALi view mapping, accessibility bridge, view pool |
-| `transport/`           | A2A (JSON-RPC + SSE) client                   |
+| Module      | Responsibility                                                                              |
+|-------------|---------------------------------------------------------------------------------------------|
+| `core/`     | Message parsing, surface/data models, expression evaluation, diff engine, template cache    |
+| `renderer/` | A2UI component → DALi view mapping, accessibility bridge, view pool                         |
 
 ## Conformance
 

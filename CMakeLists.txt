@@ -42,13 +42,12 @@ SET(A2UI_CORE_SOURCES
   src/core/template-cache.cpp
 )
 
-# Renderer + transport: DALi-side bindings.
+# Renderer: DALi-side bindings.
 SET(A2UI_LIB_SOURCES
   ${A2UI_CORE_SOURCES}
   src/renderer/a11y-bridge.cpp
   src/renderer/a2ui-renderer.cpp
   src/renderer/view-pool.cpp
-  src/transport/a2a-transport.cpp
 )
 
 # ============================================================
