@@ -31,25 +31,23 @@
 #include <dali/public-api/adaptor-framework/window-data.h>
 #include <dali/public-api/math/rect.h>
 #include <dali-ui-foundation/dali-ui-foundation.h>
+#include <dali/public-api/signals/slot-delegate.h>
 
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 
-namespace
-{
-
-class BasicRendererApp : public Dali::ConnectionTracker
+class BasicRendererApp
 {
 public:
   BasicRendererApp(Dali::Application& app, std::string jsonlPath)
-  : mApplication(app), mJsonlPath(std::move(jsonlPath))
+  : mApplication(app), mJsonlPath(std::move(jsonlPath)), mSlotDelegate(this)
   {
-    mApplication.InitSignal().Connect(this, &BasicRendererApp::OnInit);
+    mApplication.InitSignal().Connect(mSlotDelegate, &BasicRendererApp::OnInit);
   }
 
 private:
-  void OnInit(Dali::Application& app)
+  void OnInit(Dali::Application app)
   {
     Dali::Window window = app.GetWindow();
     window.SetBackgroundColor(Dali::Ui::UiColor(0xf5f5f5));
@@ -80,9 +78,8 @@ private:
   A2ui::A2uiMessageProcessor mProcessor;
   A2ui::SurfaceModel         mSurface;
   A2ui::A2uiRenderer         mRenderer;
+  Dali::SlotDelegate<BasicRendererApp> mSlotDelegate;
 };
-
-} // namespace
 
 int DALI_EXPORT_API main(int argc, char** argv)
 {

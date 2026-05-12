@@ -18,6 +18,7 @@
 #include <dali/integration-api/debug.h>
 #include <dali/public-api/events/touch-event.h>
 #include <dali-ui-foundation/public-api/image-view.h>
+#include <dali-ui-foundation/public-api/image/image-enumerations.h>
 #include <dali-ui-foundation/public-api/layouts/flex-layout-params.h>
 #include <dali-ui-foundation/public-api/scroll-view.h>
 #include <dali-ui-foundation/public-api/text/text-enumerations.h>
@@ -653,10 +654,10 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
   // (stretch) / none (center). cover preserves aspect ratio by filling the
   // actor box and cropping overflow.
   const char* fitSpec = GetNodeString(*comp.rawNode, "fittingMode", "cover");
-  Dali::FittingMode::Type visualFit = Dali::FittingMode::SCALE_TO_FILL;
-  if(strcmp(fitSpec, "contain") == 0)      visualFit = Dali::FittingMode::FIT_WIDTH;
-  else if(strcmp(fitSpec, "fill") == 0)    visualFit = Dali::FittingMode::DEFAULT;
-  else if(strcmp(fitSpec, "none") == 0)    visualFit = Dali::FittingMode::FIT_HEIGHT;
+  Dali::Ui::Image::FittingMode visualFit = Dali::Ui::Image::FittingMode::OVER_FIT_KEEP_ASPECT_RATIO;
+  if(strcmp(fitSpec, "contain") == 0)      visualFit = Dali::Ui::Image::FittingMode::FIT_KEEP_ASPECT_RATIO;
+  else if(strcmp(fitSpec, "fill") == 0)    visualFit = Dali::Ui::Image::FittingMode::FILL;
+  else if(strcmp(fitSpec, "none") == 0)    visualFit = Dali::Ui::Image::FittingMode::CENTER;
 
   bool isRemoteUrl = (!url.empty() && url.find("://") != std::string::npos);
   std::string fullPath = url;
@@ -664,7 +665,7 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
   {
     fullPath = mImageDir + url;
   }
-
+ 
   std::string resolved;
   if(isRemoteUrl)
   {
