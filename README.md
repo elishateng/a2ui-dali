@@ -33,7 +33,7 @@ The renderer maps the standard A2UI v0.9 catalog onto DALi UI components.
 | A2UI component | DALi mapping                          |
 |----------------|---------------------------------------|
 | Text           | `Label`                               |
-| Image          | `View` + image visual                 |
+| Image          | `ImageView` (responsive: max-width + `fit`) |
 | Icon           | `View` + image visual                 |
 | Divider        | `View`                                |
 | Row            | `FlexLayout` (row)                    |
