@@ -447,6 +447,19 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
           {
             labelChild.SetRequestedWidth(WRAP_CONTENT);
           }
+          else if(childType == "Image")
+          {
+            // A responsive image is MATCH_PARENT (fill container up to its
+            // declared max-width). On a Row's MAIN axis the layout engine forces
+            // MATCH_PARENT children to the full width, squeezing siblings — so
+            // pin the image to its declared width (stashed as MaximumWidth);
+            // flex-shrink still trims it if the row is too narrow.
+            float declared = child.GetMaximumWidth();
+            if(declared > 0.0f && declared < 100000.0f)
+            {
+              child.SetRequestedWidth(declared);
+            }
+          }
           child.SetLayoutParams(FlexLayoutParams::New().SetFlexShrink(1.0f));
         }
       }
@@ -649,6 +662,14 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
   else if(strcmp(variant, "square") == 0)        { w = 280.0f; h = 280.0f; }
   else if(strcmp(variant, "header") == 0)        { w = MATCH_PARENT; h = 200.0f; isHeader = true; }
 
+  // Explicit width/height on the A2UI node take precedence over the variant
+  // default (the catalog's posters declare e.g. width:150, height:225).
+  if(!isHeader)
+  {
+    w = GetNodeFloat(*comp.rawNode, "width", w);
+    h = GetNodeFloat(*comp.rawNode, "height", h);
+  }
+
   bool isRemoteUrl = (!url.empty() && url.find("://") != std::string::npos);
   std::string fullPath = url;
   if(!url.empty() && !isRemoteUrl && url[0] != '/')
@@ -667,31 +688,51 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
     if(testFile.is_open()) resolved = fullPath;
   }
 
-  // Background-visual approach: View's cornerRadius clips the BACKGROUND
-  // (image) rendering, which gives the rounded image corners. Ui::ImageView
-  // renders the image as a foreground visual that bypasses the view's clip,
-  // so corners stay square — do not switch back to it for this reason.
-  View imageView = View::New();
-  imageView.SetRequestedWidth(w);
-  imageView.SetRequestedHeight(h);
-  imageView.SetCornerRadius(12.0f);
-  if(!isHeader)
-  {
-    imageView.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
-  }
+  // A2UI fit → DALi fitting mode. "cover" (default) fills the box keeping aspect
+  // (crops overflow); "contain" fits inside keeping aspect; "fill" stretches.
+  const char* fitSpec = GetNodeString(*comp.rawNode, "fit",
+                          GetNodeString(*comp.rawNode, "fittingMode", "cover"));
+  auto fitMode = Ui::Image::FittingMode::OVER_FIT_KEEP_ASPECT_RATIO; // cover
+  if(strcmp(fitSpec, "contain") == 0)   fitMode = Ui::Image::FittingMode::FIT_KEEP_ASPECT_RATIO;
+  else if(strcmp(fitSpec, "fill") == 0) fitMode = Ui::Image::FittingMode::FILL;
 
   if(resolved.empty())
   {
-    imageView.SetBackgroundColor(COLOR_IMG_PLACEHOLDER);
-    return imageView;
+    View placeholder = View::New();
+    placeholder.SetRequestedWidth(isHeader ? MATCH_PARENT : w);
+    placeholder.SetRequestedHeight(h);
+    placeholder.SetCornerRadius(12.0f);
+    placeholder.SetBackgroundColor(COLOR_IMG_PLACEHOLDER);
+    if(!isHeader)
+    {
+      placeholder.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
+    }
+    return placeholder;
   }
 
-  // dali-ui reworked visual Property::Map keys (Ui::Visual::Property::TYPE /
-  // Ui::Visual::IMAGE) into the VisualType / typed-visual API. The View BACKGROUND
-  // property still accepts a String URL directly, rendering it as a background
-  // visual (preserving the View cornerRadius clip).
-  imageView.SetProperty(Ui::View::Property::BACKGROUND, Property::Value(Dali::String(resolved.c_str())));
-  return imageView;
+  // Web-responsive image — mirrors CSS `img { max-width:100%; height:<declared> }`.
+  // Width fills the container but never exceeds the declared width; the height
+  // stays at the declared value and fit:cover crops to fill. So when a horizontal
+  // flex List shrinks the cards, the poster keeps its vertical length (the image
+  // just crops more) instead of shrinking via aspect ratio.
+  ImageView img = ImageView::New(resolved.c_str());
+  img.SetFittingMode(fitMode);
+  img.SetCornerRadius(12.0f);
+  img.SetDesiredWidth(static_cast<int>(w > 0 ? w : 0));
+  img.SetDesiredHeight(static_cast<int>(h));
+  if(isHeader)
+  {
+    img.SetRequestedWidth(MATCH_PARENT);
+    img.SetRequestedHeight(h);
+  }
+  else
+  {
+    img.SetRequestedWidth(MATCH_PARENT);
+    img.SetMaximumWidth(w);
+    img.SetRequestedHeight(h);
+    img.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
+  }
+  return img;
 }
 
 // ========================================================================
@@ -1496,6 +1537,19 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
   std::string direction = GetNodeString(*comp.rawNode, "direction", "vertical");
   bool horizontal = (direction == "horizontal");
 
+  // Web CSS-flexbox model: a horizontal-list item must not keep MATCH_PARENT
+  // width (the first item would fill the row and push the rest off-screen).
+  // Make each item a flex item (CSS `flex: 1 1 0`) so items share the row and
+  // shrink to fit — all lay out side-by-side and fill the width. The vertical
+  // list is unchanged (there MATCH_PARENT width is the cross axis = stretch).
+  auto sizeItemMainAxis = [horizontal](View item) {
+    if(horizontal && item && item.GetRequestedWidth() == MATCH_PARENT)
+    {
+      item.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexShrink(1.0f).SetFlexBasis(0.0f));
+      item.SetRequestedWidth(0.0f);
+    }
+  };
+
   FlexLayout listContainer = FlexLayout::New();
   listContainer.SetDirection(horizontal ? FlexDirection::ROW : FlexDirection::COLUMN);
   listContainer.SetRequestedWidth(MATCH_PARENT);
@@ -1534,6 +1588,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
             ctx.CreateChildContext(dataBindingPath + "/" + std::to_string(itemIndex));
 
           View itemView = RenderComponent(tmplId, components, childCtx);
+          sizeItemMainAxis(itemView);
           if(gap > 0.0f && itemIndex > 0)
           {
             uint16_t g = static_cast<uint16_t>(gap);
@@ -1588,6 +1643,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
             if(!tmplRootId.empty())
             {
               View itemView = RenderComponent(tmplRootId, tmplCompModel, childCtx);
+              sizeItemMainAxis(itemView);
 
               if(gap > 0.0f && itemIndex > 0)
               {
@@ -1613,6 +1669,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
   for(const auto& childId : comp.childIds)
   {
     View child = RenderComponent(childId, components, ctx);
+    sizeItemMainAxis(child);
 
     if(gap > 0.0f && index > 0)
     {
