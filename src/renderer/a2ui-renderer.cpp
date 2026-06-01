@@ -649,15 +649,6 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
   else if(strcmp(variant, "square") == 0)        { w = 280.0f; h = 280.0f; }
   else if(strcmp(variant, "header") == 0)        { w = MATCH_PARENT; h = 200.0f; isHeader = true; }
 
-  // A2UI fittingMode: cover (default, crops) / contain (letterbox) / fill
-  // (stretch) / none (center). cover preserves aspect ratio by filling the
-  // actor box and cropping overflow.
-  const char* fitSpec = GetNodeString(*comp.rawNode, "fittingMode", "cover");
-  Dali::FittingMode::Type visualFit = Dali::FittingMode::SCALE_TO_FILL;
-  if(strcmp(fitSpec, "contain") == 0)      visualFit = Dali::FittingMode::FIT_WIDTH;
-  else if(strcmp(fitSpec, "fill") == 0)    visualFit = Dali::FittingMode::DEFAULT;
-  else if(strcmp(fitSpec, "none") == 0)    visualFit = Dali::FittingMode::FIT_HEIGHT;
-
   bool isRemoteUrl = (!url.empty() && url.find("://") != std::string::npos);
   std::string fullPath = url;
   if(!url.empty() && !isRemoteUrl && url[0] != '/')
@@ -695,11 +686,11 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
     return imageView;
   }
 
-  Property::Map imageMap;
-  imageMap.Add(Ui::Visual::Property::TYPE, Ui::Visual::IMAGE);
-  imageMap.Add(Ui::ImageVisual::Property::URL, Property::Value(Dali::String(resolved.c_str())));
-  imageMap.Add(Ui::ImageVisual::Property::FITTING_MODE, static_cast<int>(visualFit));
-  imageView.SetProperty(Ui::View::Property::BACKGROUND, imageMap);
+  // dali-ui reworked visual Property::Map keys (Ui::Visual::Property::TYPE /
+  // Ui::Visual::IMAGE) into the VisualType / typed-visual API. The View BACKGROUND
+  // property still accepts a String URL directly, rendering it as a background
+  // visual (preserving the View cornerRadius clip).
+  imageView.SetProperty(Ui::View::Property::BACKGROUND, Property::Value(Dali::String(resolved.c_str())));
   return imageView;
 }
 
@@ -1659,10 +1650,7 @@ View A2uiRenderer::RenderIcon(const ComponentModel& comp, DataContext& ctx)
   if(testFile.is_open())
   {
     testFile.close();
-    Property::Map imageMap;
-    imageMap.Add(Ui::Visual::Property::TYPE, Ui::Visual::IMAGE);
-    imageMap.Add(Ui::ImageVisual::Property::URL, Property::Value(Dali::String(iconPath.c_str())));
-    iconView.SetProperty(Ui::View::Property::BACKGROUND, imageMap);
+    iconView.SetProperty(Ui::View::Property::BACKGROUND, Property::Value(Dali::String(iconPath.c_str())));
   }
   else
   {

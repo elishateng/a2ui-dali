@@ -49,7 +49,7 @@ public:
   }
 
 private:
-  void OnInit(Dali::Application& app)
+  void OnInit(Dali::Application app)
   {
     Dali::Window window = app.GetWindow();
     window.SetBackgroundColor(Dali::Ui::UiColor(0xf5f5f5));

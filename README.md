@@ -7,6 +7,19 @@ A [DALi](https://github.com/dalihub)-based renderer for the
 native DALi views, applying `updateComponents` and `updateDataModel`
 batches incrementally as they arrive.
 
+> ## ⚠️ DALi compatibility
+>
+> `dali-ui` is under active development and its UI / visual APIs change frequently.
+> This revision of `a2ui-dali` is built against:
+>
+> | Module | Version |
+> |--------|---------|
+> | `dali2-core`, `dali2-adaptor` | **2.5.24** (`devel/master`) |
+> | `dali2-ui-foundation`, `dali2-ui-components` | **`dali-ui` `devel`** — current typed-visual API (`Ui::VisualType`, `Ui::ImageView`, by-value signal slots) |
+>
+> Building against an older `dali-ui` that still exposes `Ui::Visual::Property::TYPE`
+> or `Dali::FittingMode` will not compile — track a `dali-ui` revision from the same period.
+
 ## Status
 
 Early preview. The standard A2UI v0.9 catalog is mapped to DALi UI
