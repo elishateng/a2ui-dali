@@ -93,6 +93,14 @@ private:
   Dali::Ui::View RenderTextField(const ComponentModel& comp, DataContext& ctx);
   Dali::Ui::View RenderCheckBox(const ComponentModel& comp, DataContext& ctx);
   Dali::Ui::View RenderChoicePicker(const ComponentModel& comp, DataContext& ctx);
+  Dali::Ui::View RenderChoicePickerChips(const ComponentModel& comp, DataContext& ctx,
+                                         const std::string& boundPath,
+                                         const std::string& currentValue,
+                                         const Dali::Ui::TreeNode* optionsNode);
+  Dali::Ui::View RenderChoicePickerRadio(const ComponentModel& comp, DataContext& ctx,
+                                         const std::string& boundPath,
+                                         const std::string& currentValue,
+                                         const Dali::Ui::TreeNode* optionsNode);
   Dali::Ui::View RenderSlider(const ComponentModel& comp, DataContext& ctx);
   Dali::Ui::View RenderDateTimeInput(const ComponentModel& comp, DataContext& ctx);
   Dali::Ui::View RenderProgressBar(const ComponentModel& comp, DataContext& ctx);

@@ -42,6 +42,25 @@ namespace
 // Shared OneUI colour constants now live in render-style.h/.cpp (so the per-component
 // renderer files share them).
 
+// Helper structure for choice picker options
+struct ChoiceOptionData {
+  std::string label;
+  std::string value;
+};
+
+// Extract option label/value from TreeNode
+ChoiceOptionData ExtractOptionData(const TreeNode& optNode) {
+  const TreeNode* optLabelNode = optNode.Find("label");
+  const TreeNode* optValueNode = optNode.Find("value");
+
+  std::string optLabel = (optLabelNode && optLabelNode->GetType() == TreeNode::STRING)
+                        ? optLabelNode->GetString() : "";
+  std::string optValue = (optValueNode && optValueNode->GetType() == TreeNode::STRING)
+                        ? optValueNode->GetString() : "";
+
+  return {optLabel, optValue};
+}
+
 // Recursively walk a component subtree looking for the first node that
 // defines an `action`. Used by RenderCard as a fallback so that the whole
 // card layout can receive taps — dali-ui has no native Button, so the
