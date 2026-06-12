@@ -1,0 +1,101 @@
+# Changelog
+
+All notable changes to **a2ui-dali** are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.9.0] — 2026-06-12
+
+Initial public release of **a2ui-dali**, a native C++/[DALi](https://github.com/dalihub)
+renderer for the [A2UI v0.9](https://a2ui.org) protocol. It turns an A2UI message stream
+into native DALi views: you feed it messages as they arrive, and it builds and
+incrementally updates the UI, raises an event with the root view for each surface, and
+reports user actions back to you.
+
+**Status — 0.9 (pre-1.0).** The v0.9 catalog is feature-complete and rendering is
+regression-tested, but the public API and theming are not yet frozen and the renderer
+tracks a moving `dali-ui` `devel` API (see *Compatibility*). Expect breaking changes
+before 1.0.
+
+### Highlights
+
+- **Full A2UI v0.9 catalog** rendered onto DALi — layout, text, media, inputs, lists,
+  tabs, and a modal — with two-way data binding, `${…}` expression evaluation, list
+  templating, and form validation (`checks`).
+- **`A2uiHost` facade** — one object owns the surface registry, message parser, and
+  renderer. Multi-surface routing by `surfaceId`, per-surface `theme` / `sourceApp`, and
+  host events (`OnBeginRenderingSurface` / `OnDeleteSurface` / `OnUserAction`).
+- **Component-handler registry** — each component type maps to a handler; the standard
+  catalog is the set registered at construction, and a **custom catalog is extra handlers
+  registered onto the same renderer** via `RegisterComponent` — no renderer subclass.
+- **Distributable** — installs a static library, public headers, and a `pkg-config` file.
+- **Deterministic, regression-tested rendering** held to a pixel-level screenshot suite.
+
+### Added
+
+- **Host & integration**
+  - `A2uiHost` facade with multi-surface support, per-surface `theme` (`width`, `height`,
+    `pattern`), `sourceApp`, and `sendDataModel`.
+  - `JsonFeed` accepts a JSON array of messages, newline-delimited JSONL, or a single
+    object; `JsonFeedFile` renders a whole file as one batch (deferred render).
+  - Install rules + `a2ui-dali.pc` `pkg-config` so the library is consumable from another
+    build with `pkg-config --cflags --libs a2ui-dali`.
+- **Catalog** — Text, Image (responsive; `avatar` → circular mask), Icon (tintable
+  Material set), Divider, Row/Column (`FlexLayout`), List (templated via data path), Card,
+  Tabs, Button, TextField, CheckBox, ChoicePicker, Slider, ProgressBar, DateTimeInput,
+  Modal, and view-composition skeletons for Video and AudioPlayer.
+- **Custom catalogs** — `A2uiRenderer::RegisterComponent(type, handler)` public API and a
+  `RenderContext` that gives a custom handler the same services the built-ins use (data
+  binding via `ResolveString` / `ResolveFloat` / `GetBoundPath`, the action dispatcher,
+  and `RenderChild(id)` to recurse). See `examples/custom-component/`.
+- **Examples** — `basic-renderer`, `gallery-demo` (keyboard catalog browser),
+  `custom-component` (registers a `Badge` type), `a2a-integration`, and ready-to-run v0.9
+  sample streams under `examples/samples/`.
+- **Tooling** — a screenshot capture harness (`tools/capture.sh`) and a pixel regression
+  runner (`tools/regress.sh`) that diffs the gallery examples against a golden baseline.
+
+### Architecture
+
+- The renderer dispatches each component through a **registry** (`ComponentRegistry`),
+  with one file per component under `src/renderer/components/`; `a2ui-renderer.cpp` holds
+  only the dispatch, entry point, and shared helpers (385 lines). Shared state is passed
+  explicitly through `RenderContext`.
+- A2UI catalogs are a **negotiated set of component types**, not a code artifact. The
+  registry *is* the catalog: the standard catalog is the built-in handler set, and a custom
+  `catalogId` needs no special-casing because the renderer renders whatever types are
+  registered. This matches the official A2UI renderers (Lit / Angular / React).
+
+### Theming
+
+- Colours resolve through OneUI semantic tokens (`A2uiTheme`) with a bundled palette
+  fallback; the standard catalog renders on a white card surface with rounded image corners
+  by default, sourced from the theme rather than hard-coded per component.
+- Image sizes, font sizes, radii, borders, and spacing are centralised in `A2uiMetrics` and
+  expressed in density-independent `dp` units for clean high-DPI scaling.
+
+### Verification
+
+- **Conformance**: 68/68 parser/model assertions pass (`a2ui-conformance-test`).
+- **Screenshot regression**: 29/29 gallery examples render pixel-identical to the golden
+  baseline (`tools/regress.sh`); renders are deterministic, so any non-zero mean-abs-diff
+  flags a regression.
+- **Clean build**: builds from scratch with zero warnings/errors against the DALi revision
+  below.
+
+### Known limitations
+
+- A trailing inline item of small text inside a flex-grow row (e.g. a duration or price at
+  the far end of a row) can clip, because DALi flex-grow does not reserve width for a
+  trailing sibling. Tracked for a follow-up.
+- Video and AudioPlayer are view-composition skeletons (poster/art + transport affordance),
+  not real media playback.
+
+### Compatibility
+
+- Built against `dali2-core` / `dali2-adaptor` **2.5.24** (`devel/master`) and the current
+  `dali-ui` `devel` typed-visual API (`Ui::VisualType`, `Ui::ImageView`, by-value signal
+  slots). `dali-ui` UI/visual APIs change frequently; track a `dali-ui` revision from the
+  same period. Source `setenv` from your `dali-env` before building.
+
+[0.9.0]: https://github.com/dalihub/a2ui-dali/releases/tag/v0.9.0

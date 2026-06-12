@@ -1,0 +1,172 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "recipeCard",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "recipeCard",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "recipe-image",
+            "content"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "recipe-image",
+          "component": "Image",
+          "url": {
+            "path": "/image"
+          },
+          "description": {
+            "path": "/title"
+          },
+          "fit": "cover"
+        },
+        {
+          "id": "content",
+          "component": "Column",
+          "children": [
+            "title",
+            "rating-row",
+            "times-row",
+            "servings"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "title",
+          "component": "Text",
+          "text": {
+            "path": "/title"
+          },
+          "variant": "h3"
+        },
+        {
+          "id": "rating-row",
+          "component": "Row",
+          "children": [
+            "star-icon",
+            "rating",
+            "review-count"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "star-icon",
+          "component": "Icon",
+          "name": "star"
+        },
+        {
+          "id": "rating",
+          "component": "Text",
+          "text": {
+            "path": "/rating"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "review-count",
+          "component": "Text",
+          "text": {
+            "path": "/reviewCount"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "times-row",
+          "component": "Row",
+          "children": [
+            "prep-time",
+            "cook-time"
+          ],
+          "gap": 16
+        },
+        {
+          "id": "prep-time",
+          "component": "Row",
+          "children": [
+            "prep-icon",
+            "prep-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "prep-icon",
+          "component": "Icon",
+          "name": "timer"
+        },
+        {
+          "id": "prep-text",
+          "component": "Text",
+          "text": {
+            "path": "/prepTime"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "cook-time",
+          "component": "Row",
+          "children": [
+            "cook-icon",
+            "cook-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "cook-icon",
+          "component": "Icon",
+          "name": "local_fire_department"
+        },
+        {
+          "id": "cook-text",
+          "component": "Text",
+          "text": {
+            "path": "/cookTime"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "servings",
+          "component": "Text",
+          "text": {
+            "path": "/servings"
+          },
+          "variant": "caption"
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "recipeCard",
+      "path": "/",
+      "value": {
+        "image": "sample-images/2ae6478dbcc3.jpg",
+        "title": "Mediterranean Quinoa Bowl",
+        "rating": "4.9",
+        "reviewCount": "(1,247 reviews)",
+        "prepTime": "15 min prep",
+        "cookTime": "20 min cook",
+        "servings": "Serves 4"
+      }
+    }
+  }
+]

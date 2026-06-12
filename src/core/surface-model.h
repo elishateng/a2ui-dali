@@ -47,6 +47,17 @@ public:
   bool GetSendDataModel() const { return mSendDataModel; }
   void SetSendDataModel(bool v) { mSendDataModel = v; }
 
+  // createSurface theme + sourceApp (the reference renderer SurfaceContext parity).
+  void SetTheme(float w, float h, const std::string& pattern)
+  {
+    mPreferWidth = w; mPreferHeight = h; mPattern = pattern;
+  }
+  void SetSourceApp(const std::string& app) { mSourceApp = app; }
+  float GetPreferWidth() const { return mPreferWidth; }
+  float GetPreferHeight() const { return mPreferHeight; }
+  const std::string& GetPattern() const { return mPattern; }
+  const std::string& GetSourceApp() const { return mSourceApp; }
+
   SurfaceComponentsModel& GetComponentsModel() { return mComponents; }
   const SurfaceComponentsModel& GetComponentsModel() const { return mComponents; }
 
@@ -66,6 +77,10 @@ private:
   std::string            mCatalogId;
   bool                   mCreated = false;
   bool                   mSendDataModel = false;
+  float                  mPreferWidth = 0.0f;
+  float                  mPreferHeight = 0.0f;
+  std::string            mPattern;
+  std::string            mSourceApp;
   SurfaceComponentsModel mComponents;
   DataModel              mDataModel;
 

@@ -1,0 +1,11 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: a2ui-dali
+Description: DALi-based renderer for the A2UI protocol
+Version: @PROJECT_VERSION@
+Requires: dali2-core dali2-adaptor dali2-ui-foundation dali2-ui-components
+Libs: -L${libdir} -la2ui-dali
+Cflags: -I${includedir}/a2ui-dali

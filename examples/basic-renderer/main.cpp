@@ -17,15 +17,12 @@
 //
 //   ./a2ui-basic-renderer [path/to/messages.jsonl]
 //
-// Loads an A2UI v0.9 JSONL stream from a file (default: ./sample.jsonl),
-// feeds it through A2uiMessageProcessor, and renders the resulting surface
-// into a DALi window. This is the smallest end-to-end integration of the
-// library; production apps will typically wire the processor to a live
-// transport (e.g. A2A) instead of a static file.
+// Loads an A2UI v0.9 JSONL stream from a file (default: ./sample.jsonl) and feeds it
+// through the A2uiHost facade, which renders each surface and hands its root view back
+// via a callback. This is the smallest end-to-end integration of the library; production
+// apps wire JsonFeed() to a live transport (e.g. A2A) instead of a static file.
 
-#include "core/a2ui-message-processor.h"
-#include "core/surface-model.h"
-#include "renderer/a2ui-renderer.h"
+#include "renderer/a2ui-host.h"
 
 #include <dali/public-api/adaptor-framework/application.h>
 #include <dali/public-api/adaptor-framework/window-data.h>
@@ -52,7 +49,7 @@ private:
   void OnInit(Dali::Application app)
   {
     Dali::Window window = app.GetWindow();
-    window.SetBackgroundColor(Dali::Ui::UiColor(0xf5f5f5));
+    window.SetBackgroundColor(Dali::Ui::UiColor(0xFFFFFF)); // OneUI BackgroundApp (cards = SurfaceContainerLow on top)
 
     Dali::Ui::FlexLayout root = Dali::Ui::FlexLayout::New();
     root.SetDirection(Dali::Ui::FlexDirection::COLUMN);
@@ -61,25 +58,26 @@ private:
     root.SetPadding(Dali::Extents(16, 16, 16, 16));
     window.Add(root);
 
-    if(!mProcessor.ProcessFile(mJsonlPath, mSurface))
-    {
-      std::fprintf(stderr, "[a2ui-dali] Failed to process '%s': %s\n",
-                   mJsonlPath.c_str(), mProcessor.GetLastError().c_str());
-      return;
-    }
+    // Resolve local image/icon resources (icons/<name>.png, etc.) relative to res/.
+    mHost.GetRenderer().SetImageDir("res/");
 
-    Dali::Ui::View rendered = mRenderer.Render(mSurface);
-    if(rendered)
+    // The host hands back each surface's rooted view; the app just adds it to its layout.
+    mHost.SetOnBeginRenderingSurface([root](const std::string&, Dali::Ui::View view) mutable {
+      root.Add(view);
+    });
+    mHost.SetOnUserAction([](const std::string& surfaceId, const std::string& json) {
+      std::printf("[a2ui-dali] action surface=%s %s\n", surfaceId.c_str(), json.c_str());
+    });
+
+    if(!mHost.JsonFeedFile(mJsonlPath))
     {
-      root.Add(rendered);
+      std::fprintf(stderr, "[a2ui-dali] Failed to open '%s'\n", mJsonlPath.c_str());
     }
   }
 
-  Dali::Application&        mApplication;
-  std::string               mJsonlPath;
-  A2ui::A2uiMessageProcessor mProcessor;
-  A2ui::SurfaceModel         mSurface;
-  A2ui::A2uiRenderer         mRenderer;
+  Dali::Application& mApplication;
+  std::string        mJsonlPath;
+  A2ui::A2uiHost     mHost;
 };
 
 } // namespace
@@ -88,13 +86,26 @@ int DALI_EXPORT_API main(int argc, char** argv)
 {
   std::string jsonlPath = (argc > 1) ? argv[1] : "sample.jsonl";
 
+  // Window size: CLI args (w h) override the DALI_WINDOW_WIDTH/HEIGHT env, default 720x1080.
+  int winW = 720, winH = 1080;
+  if(const char* e = std::getenv("DALI_WINDOW_WIDTH"))  { int v = std::atoi(e); if(v > 0) winW = v; }
+  if(const char* e = std::getenv("DALI_WINDOW_HEIGHT")) { int v = std::atoi(e); if(v > 0) winH = v; }
+  if(argc > 3) { int w = std::atoi(argv[2]), h = std::atoi(argv[3]); if(w > 0 && h > 0) { winW = w; winH = h; } }
+
   Dali::WindowData windowData;
-  Dali::Rect<int> positionSize(0, 0, 720, 1080);
+  Dali::Rect<int> positionSize(0, 0, winW, winH);
   windowData.SetPositionSize(positionSize);
 
   Dali::Application application = Dali::Application::New(
       &argc, &argv, "", /*useUiThread=*/false, windowData);
-  Dali::Ui::UiConfig::New().Apply();
+
+  // DPI drives the _dp unit factor (default 160 → 1dp=1px). Raising it scales the whole
+  // UI, e.g. DALI_UI_DPI=320 → 2x — pair it with a window scaled by the same factor
+  // (DALI_WINDOW_WIDTH/HEIGHT) to supersample for crisp high-res captures at an unchanged
+  // layout.
+  int uiDpi = 160;
+  if(const char* e = std::getenv("DALI_UI_DPI")) { int v = std::atoi(e); if(v > 0) uiDpi = v; }
+  Dali::Ui::UiConfig::New().SetDpi(uiDpi).Apply();
 
   BasicRendererApp demo(application, jsonlPath);
   application.MainLoop();

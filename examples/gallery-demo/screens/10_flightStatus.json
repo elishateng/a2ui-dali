@@ -1,0 +1,210 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "flightStatus",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "flightStatus",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "header-row",
+            "route-row",
+            "divider",
+            "times-row"
+          ],
+          "gap": 8,
+          "align": "stretch"
+        },
+        {
+          "id": "header-row",
+          "component": "Row",
+          "children": [
+            "header-left",
+            "date"
+          ],
+          "justify": "spaceBetween",
+          "align": "center"
+        },
+        {
+          "id": "header-left",
+          "component": "Row",
+          "children": [
+            "flight-indicator",
+            "flight-number"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "flight-indicator",
+          "component": "Icon",
+          "name": "flight"
+        },
+        {
+          "id": "flight-number",
+          "component": "Text",
+          "text": {
+            "path": "/flightNumber"
+          },
+          "variant": "h3"
+        },
+        {
+          "id": "date",
+          "component": "Text",
+          "text": {
+            "path": "/date"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "route-row",
+          "component": "Row",
+          "children": [
+            "origin",
+            "arrow",
+            "destination"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "origin",
+          "component": "Text",
+          "text": {
+            "path": "/origin"
+          },
+          "variant": "h2"
+        },
+        {
+          "id": "arrow",
+          "component": "Text",
+          "text": "\u2192",
+          "variant": "h2"
+        },
+        {
+          "id": "destination",
+          "component": "Text",
+          "text": {
+            "path": "/destination"
+          },
+          "variant": "h2"
+        },
+        {
+          "id": "divider",
+          "component": "Divider"
+        },
+        {
+          "id": "times-row",
+          "component": "Row",
+          "children": [
+            "departure-col",
+            "status-col",
+            "arrival-col"
+          ],
+          "justify": "spaceBetween"
+        },
+        {
+          "id": "departure-col",
+          "component": "Column",
+          "children": [
+            "departure-label",
+            "departure-time"
+          ],
+          "align": "start",
+          "gap": 0
+        },
+        {
+          "id": "departure-label",
+          "component": "Text",
+          "text": "Departs",
+          "variant": "caption"
+        },
+        {
+          "id": "departure-time",
+          "component": "Text",
+          "text": {
+            "path": "/departureTime"
+          },
+          "variant": "h3"
+        },
+        {
+          "id": "status-col",
+          "component": "Column",
+          "children": [
+            "status-label",
+            "status-value"
+          ],
+          "align": "center",
+          "gap": 0
+        },
+        {
+          "id": "status-label",
+          "component": "Text",
+          "text": "Status",
+          "variant": "caption"
+        },
+        {
+          "id": "status-value",
+          "component": "Text",
+          "text": {
+            "path": "/status"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "arrival-col",
+          "component": "Column",
+          "children": [
+            "arrival-label",
+            "arrival-time"
+          ],
+          "align": "end",
+          "gap": 0
+        },
+        {
+          "id": "arrival-label",
+          "component": "Text",
+          "text": "Arrives",
+          "variant": "caption"
+        },
+        {
+          "id": "arrival-time",
+          "component": "Text",
+          "text": {
+            "path": "/arrivalTime"
+          },
+          "variant": "h3"
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "flightStatus",
+      "path": "/",
+      "value": {
+        "flightNumber": "OS 87",
+        "date": "Mon, Dec 15",
+        "origin": "Vienna",
+        "destination": "New York",
+        "departureTime": "10:15 AM",
+        "status": "On Time",
+        "arrivalTime": "2:30 PM"
+      }
+    }
+  }
+]

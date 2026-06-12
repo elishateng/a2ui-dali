@@ -1,0 +1,151 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "productCard",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "productCard",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "image",
+            "details"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "image",
+          "component": "Image",
+          "url": {
+            "path": "/imageUrl"
+          },
+          "description": {
+            "path": "/name"
+          },
+          "fit": "cover"
+        },
+        {
+          "id": "details",
+          "component": "Column",
+          "children": [
+            "name",
+            "rating-row",
+            "price-row",
+            "actions"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "name",
+          "component": "Text",
+          "text": {
+            "path": "/name"
+          },
+          "variant": "h3"
+        },
+        {
+          "id": "rating-row",
+          "component": "Row",
+          "children": [
+            "stars",
+            "reviews"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "stars",
+          "component": "Text",
+          "text": {
+            "path": "/stars"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "reviews",
+          "component": "Text",
+          "text": {
+            "path": "/reviews"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "price-row",
+          "component": "Row",
+          "children": [
+            "price",
+            "original-price"
+          ],
+          "gap": 8,
+          "align": "start"
+        },
+        {
+          "id": "price",
+          "component": "Text",
+          "text": {
+            "path": "/price"
+          },
+          "variant": "h2"
+        },
+        {
+          "id": "original-price",
+          "component": "Text",
+          "text": {
+            "path": "/originalPrice"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "actions",
+          "component": "Row",
+          "children": [
+            "add-cart-btn"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "add-cart-btn-text",
+          "component": "Text",
+          "text": "Add to Cart"
+        },
+        {
+          "id": "add-cart-btn",
+          "component": "Button",
+          "child": "add-cart-btn-text",
+          "action": {
+            "event": {
+              "name": "addToCart"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "productCard",
+      "path": "/",
+      "value": {
+        "imageUrl": "sample-images/0e18e6281c0f.jpg",
+        "name": "Wireless Headphones Pro",
+        "stars": "\u2605\u2605\u2605\u2605\u2605",
+        "reviews": "(2,847 reviews)",
+        "price": "$199.99",
+        "originalPrice": "$249.99"
+      }
+    }
+  }
+]

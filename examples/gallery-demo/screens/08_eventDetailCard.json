@@ -1,0 +1,153 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "eventDetailCard",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "eventDetailCard",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "title",
+            "time-row",
+            "location-row",
+            "description",
+            "divider",
+            "actions"
+          ],
+          "gap": 16
+        },
+        {
+          "id": "title",
+          "component": "Text",
+          "text": {
+            "path": "/title"
+          },
+          "variant": "h2"
+        },
+        {
+          "id": "time-row",
+          "component": "Row",
+          "children": [
+            "time-icon",
+            "time-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "time-icon",
+          "component": "Icon",
+          "name": "schedule"
+        },
+        {
+          "id": "time-text",
+          "component": "Text",
+          "text": {
+            "path": "/dateTime"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "location-row",
+          "component": "Row",
+          "children": [
+            "location-icon",
+            "location-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "location-icon",
+          "component": "Icon",
+          "name": "location_on"
+        },
+        {
+          "id": "location-text",
+          "component": "Text",
+          "text": {
+            "path": "/location"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "description",
+          "component": "Text",
+          "text": {
+            "path": "/description"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "divider",
+          "component": "Divider"
+        },
+        {
+          "id": "actions",
+          "component": "Row",
+          "children": [
+            "accept-btn",
+            "decline-btn"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "accept-btn-text",
+          "component": "Text",
+          "text": "Accept"
+        },
+        {
+          "id": "accept-btn",
+          "component": "Button",
+          "child": "accept-btn-text",
+          "action": {
+            "event": {
+              "name": "accept"
+            }
+          }
+        },
+        {
+          "id": "decline-btn-text",
+          "component": "Text",
+          "text": "Decline"
+        },
+        {
+          "id": "decline-btn",
+          "component": "Button",
+          "child": "decline-btn-text",
+          "action": {
+            "event": {
+              "name": "decline"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "eventDetailCard",
+      "path": "/",
+      "value": {
+        "title": "Product Launch Meeting",
+        "dateTime": "Thu, Dec 19 \u2022 2:00 PM - 3:30 PM",
+        "location": "Conference Room A, Building 2",
+        "description": "Review final product specs and marketing materials before the Q1 launch."
+      }
+    }
+  }
+]

@@ -1,0 +1,199 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "shippingStatus",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "shippingStatus",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "header",
+            "tracking-number",
+            "divider",
+            "steps",
+            "eta"
+          ],
+          "gap": 16
+        },
+        {
+          "id": "header",
+          "component": "Row",
+          "children": [
+            "package-icon",
+            "title"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "package-icon",
+          "component": "Icon",
+          "name": "package_2"
+        },
+        {
+          "id": "title",
+          "component": "Text",
+          "text": "Package Status",
+          "variant": "h3"
+        },
+        {
+          "id": "tracking-number",
+          "component": "Text",
+          "text": {
+            "path": "/trackingNumber"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "divider",
+          "component": "Divider"
+        },
+        {
+          "id": "steps",
+          "component": "Column",
+          "children": [
+            "step1",
+            "step2",
+            "step3",
+            "step4"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "step1",
+          "component": "Row",
+          "children": [
+            "step1-icon",
+            "step1-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "step1-icon",
+          "component": "Icon",
+          "name": "check_circle"
+        },
+        {
+          "id": "step1-text",
+          "component": "Text",
+          "text": "Order Placed",
+          "variant": "body"
+        },
+        {
+          "id": "step2",
+          "component": "Row",
+          "children": [
+            "step2-icon",
+            "step2-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "step2-icon",
+          "component": "Icon",
+          "name": "check_circle"
+        },
+        {
+          "id": "step2-text",
+          "component": "Text",
+          "text": "Shipped",
+          "variant": "body"
+        },
+        {
+          "id": "step3",
+          "component": "Row",
+          "children": [
+            "step3-icon",
+            "step3-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "step3-icon",
+          "component": "Icon",
+          "name": {
+            "path": "/currentStepIcon"
+          }
+        },
+        {
+          "id": "step3-text",
+          "component": "Text",
+          "text": "Out for Delivery",
+          "variant": "h4"
+        },
+        {
+          "id": "step4",
+          "component": "Row",
+          "children": [
+            "step4-icon",
+            "step4-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "step4-icon",
+          "component": "Icon",
+          "name": "circle"
+        },
+        {
+          "id": "step4-text",
+          "component": "Text",
+          "text": "Delivered",
+          "variant": "caption"
+        },
+        {
+          "id": "eta",
+          "component": "Row",
+          "children": [
+            "eta-icon",
+            "eta-text"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "eta-icon",
+          "component": "Icon",
+          "name": "schedule"
+        },
+        {
+          "id": "eta-text",
+          "component": "Text",
+          "text": {
+            "path": "/eta"
+          },
+          "variant": "body"
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "shippingStatus",
+      "path": "/",
+      "value": {
+        "trackingNumber": "Tracking: 1Z999AA10123456784",
+        "currentStepIcon": "local_shipping",
+        "eta": "Estimated delivery: Today by 8 PM"
+      }
+    }
+  }
+]

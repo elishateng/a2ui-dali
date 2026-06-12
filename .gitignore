@@ -21,3 +21,26 @@ compile_commands.json
 
 # OS
 .DS_Store
+
+# autodev regenerable render artifacts (recreate via tools/capture.sh + tools/convert_v08_to_v09.py)
+docs/autoplan/baseline/img/
+docs/autoplan/baseline/corpus_v09/
+docs/autoplan/v1_icons/
+docs/autoplan/gallery_ref/
+docs/autoplan/components_v09/
+docs/autoplan/v4/
+docs/autoplan/v6/
+docs/autoplan/after/*.png
+docs/autoplan/compare/
+docs/autoplan/final/
+docs/autoplan/strict/*.png
+docs/autoplan/v2_buttons/
+docs/autoplan/v3_inputs/
+docs/autoplan/v4fix/
+docs/autoplan/baseline/_harness_selftest.png
+docs/autoplan/gallery_hires/
+docs/autoplan/baseline/corpus_v09_img/
+docs/autoplan/gallery_web/
+docs/autoplan/gallery_web_2x/
+# tools/regress.sh reference renders — regenerated locally from a known-good build
+docs/autoplan/golden/

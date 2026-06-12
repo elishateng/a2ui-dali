@@ -1,0 +1,178 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "musicPlayer",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "musicPlayer",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "album-art",
+            "track-info",
+            "progress",
+            "time-row",
+            "controls"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "album-art",
+          "component": "Image",
+          "url": {
+            "path": "/albumArt"
+          },
+          "description": {
+            "path": "/album"
+          },
+          "fit": "cover"
+        },
+        {
+          "id": "track-info",
+          "component": "Column",
+          "children": [
+            "song-title",
+            "artist"
+          ],
+          "align": "center"
+        },
+        {
+          "id": "song-title",
+          "component": "Text",
+          "text": {
+            "path": "/title"
+          },
+          "variant": "h3"
+        },
+        {
+          "id": "artist",
+          "component": "Text",
+          "text": {
+            "path": "/artist"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "progress",
+          "component": "ProgressBar",
+          "progress": {
+            "path": "/progress"
+          }
+        },
+        {
+          "id": "time-row",
+          "component": "Row",
+          "children": [
+            "current-time",
+            "total-time"
+          ],
+          "justify": "spaceBetween"
+        },
+        {
+          "id": "current-time",
+          "component": "Text",
+          "text": {
+            "path": "/currentTime"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "total-time",
+          "component": "Text",
+          "text": {
+            "path": "/totalTime"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "controls",
+          "component": "Row",
+          "children": [
+            "prev-btn",
+            "play-btn",
+            "next-btn"
+          ],
+          "justify": "center",
+          "gap": 16
+        },
+        {
+          "id": "prev-btn-text",
+          "component": "Text",
+          "text": "\u23ee"
+        },
+        {
+          "id": "prev-btn",
+          "component": "Button",
+          "child": "prev-btn-text",
+          "action": {
+            "event": {
+              "name": "previous"
+            }
+          }
+        },
+        {
+          "id": "play-btn-text",
+          "component": "Text",
+          "text": {
+            "path": "/playIcon"
+          }
+        },
+        {
+          "id": "play-btn",
+          "component": "Button",
+          "child": "play-btn-text",
+          "action": {
+            "event": {
+              "name": "playPause"
+            }
+          }
+        },
+        {
+          "id": "next-btn-text",
+          "component": "Text",
+          "text": "\u23ed"
+        },
+        {
+          "id": "next-btn",
+          "component": "Button",
+          "child": "next-btn-text",
+          "action": {
+            "event": {
+              "name": "next"
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "musicPlayer",
+      "path": "/",
+      "value": {
+        "albumArt": "sample-images/31fac6723948.jpg",
+        "title": "Blinding Lights",
+        "artist": "The Weeknd",
+        "album": "After Hours",
+        "progress": "0.45",
+        "currentTime": "1:48",
+        "totalTime": "4:22",
+        "playIcon": "\u23f8"
+      }
+    }
+  }
+]

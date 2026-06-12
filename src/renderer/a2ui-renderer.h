@@ -22,6 +22,7 @@
 #include "../core/action-dispatcher.h"
 #include "../core/diff-engine.h"
 #include "view-pool.h"
+#include "component-registry.h"
 #include <dali-ui-foundation/dali-ui-foundation.h>
 #include <dali/public-api/events/tap-gesture-detector.h>
 #include <string>
@@ -55,7 +56,19 @@ public:
   DiffEngine& GetDiffEngine() { return mDiffEngine; }
   ViewPool& GetViewPool() { return mViewPool; }
 
+  /**
+   * Register a component renderer for @p type — the extension point for custom catalogs.
+   * Registering a type that already exists (e.g. "Button") overrides the built-in.
+   */
+  void RegisterComponent(const std::string& type, ComponentRenderFn fn)
+  {
+    mRegistry.Register(type, std::move(fn));
+  }
+
 private:
+  /// Register the standard A2UI catalog's built-in component handlers.
+  void RegisterStandardCatalog();
+
   Dali::Ui::View RenderComponent(const std::string& id,
                                  const SurfaceComponentsModel& components,
                                  DataContext& ctx);
@@ -82,6 +95,9 @@ private:
   Dali::Ui::View RenderChoicePicker(const ComponentModel& comp, DataContext& ctx);
   Dali::Ui::View RenderSlider(const ComponentModel& comp, DataContext& ctx);
   Dali::Ui::View RenderDateTimeInput(const ComponentModel& comp, DataContext& ctx);
+  Dali::Ui::View RenderProgressBar(const ComponentModel& comp, DataContext& ctx);
+  Dali::Ui::View RenderVideo(const ComponentModel& comp, DataContext& ctx);
+  Dali::Ui::View RenderAudioPlayer(const ComponentModel& comp, DataContext& ctx);
 
   // === Layout containers ===
   Dali::Ui::View RenderTabs(const ComponentModel& comp,
@@ -113,7 +129,9 @@ private:
   static float VariantToFontSize(const char* variant);
   static Dali::Ui::UiColor ParseHexColor(const char* hex);
 
+  ComponentRegistry  mRegistry;
   std::string        mImageDir;
+  bool               mImageThumbnailHint = false; // next Image render is a Row thumbnail
   ExpressionParser   mExprParser;
   ActionDispatcher   mActionDispatcher;
   DiffEngine         mDiffEngine;

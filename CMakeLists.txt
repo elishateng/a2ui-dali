@@ -1,7 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.8.2)
 
 PROJECT(a2ui-dali
-  VERSION 0.1.0
+  VERSION 0.9.0
   DESCRIPTION "A DALi-based renderer for the A2UI protocol"
   LANGUAGES CXX C
 )
@@ -43,11 +43,20 @@ SET(A2UI_CORE_SOURCES
 )
 
 # Renderer: DALi-side bindings.
+# One file per component renderer (renderer/components/*.cpp).
+FILE(GLOB A2UI_COMPONENT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/renderer/components/*.cpp)
+
 SET(A2UI_LIB_SOURCES
   ${A2UI_CORE_SOURCES}
   src/renderer/a11y-bridge.cpp
+  src/renderer/a2ui-host.cpp
   src/renderer/a2ui-renderer.cpp
+  src/renderer/render-context.cpp
+  src/renderer/render-style.cpp
+  src/renderer/a2ui-theme.cpp
+  src/renderer/a2ui-metrics.cpp
   src/renderer/view-pool.cpp
+  ${A2UI_COMPONENT_SOURCES}
 )
 
 # ============================================================
@@ -83,6 +92,22 @@ TARGET_LINK_LIBRARIES(a2ui-dali PUBLIC
 TARGET_LINK_DIRECTORIES(a2ui-dali PUBLIC
   $ENV{DESKTOP_PREFIX}/lib
 )
+
+# ============================================================
+# Install: library + public headers + pkg-config (distributable)
+# ============================================================
+INCLUDE(GNUInstallDirs)
+
+INSTALL(TARGETS a2ui-dali ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+# Public headers keep their "core/..." / "renderer/..." include prefixes.
+INSTALL(DIRECTORY src/core src/renderer
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/a2ui-dali
+  FILES_MATCHING PATTERN "*.h")
+
+CONFIGURE_FILE(a2ui-dali.pc.in ${CMAKE_CURRENT_BINARY_DIR}/a2ui-dali.pc @ONLY)
+INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/a2ui-dali.pc
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 # ============================================================
 # Conformance test: core parsing only, no DALi UI deps
@@ -126,5 +151,23 @@ ADD_EXECUTABLE(${EXAMPLE_NAME} examples/basic-renderer/main.cpp)
 TARGET_LINK_LIBRARIES(${EXAMPLE_NAME} a2ui-dali)
 
 SET_TARGET_PROPERTIES(${EXAMPLE_NAME} PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
+)
+
+# ============================================================
+# Example: examples/gallery-demo — runnable catalog browser
+# ============================================================
+ADD_EXECUTABLE(a2ui-gallery-demo examples/gallery-demo/main.cpp)
+TARGET_LINK_LIBRARIES(a2ui-gallery-demo a2ui-dali)
+SET_TARGET_PROPERTIES(a2ui-gallery-demo PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
+)
+
+# ============================================================
+# Example: examples/custom-component — custom-catalog component via RegisterComponent
+# ============================================================
+ADD_EXECUTABLE(a2ui-custom-component examples/custom-component/main.cpp)
+TARGET_LINK_LIBRARIES(a2ui-custom-component a2ui-dali)
+SET_TARGET_PROPERTIES(a2ui-custom-component PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
 )

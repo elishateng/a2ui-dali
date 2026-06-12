@@ -171,6 +171,27 @@ bool A2uiMessageProcessor::OnCreateSurface(const TreeNode& msgBody, SurfaceModel
     surface.SetSendDataModel(sendDmNode->GetBoolean());
   }
 
+  // theme { width, height, pattern } + sourceApp (the reference renderer SurfaceContext parity).
+  const TreeNode* themeNode = msgBody.Find("theme");
+  if(themeNode && themeNode->GetType() == TreeNode::OBJECT)
+  {
+    auto readFloat = [](const TreeNode* o, const char* key) -> float {
+      const TreeNode* n = o->Find(key);
+      if(n && n->GetType() == TreeNode::FLOAT) return n->GetFloat();
+      if(n && n->GetType() == TreeNode::INTEGER) return static_cast<float>(n->GetInteger());
+      return 0.0f;
+    };
+    const TreeNode* patNode = themeNode->Find("pattern");
+    std::string pattern = (patNode && patNode->GetType() == TreeNode::STRING)
+                          ? patNode->GetString() : "";
+    surface.SetTheme(readFloat(themeNode, "width"), readFloat(themeNode, "height"), pattern);
+  }
+  const TreeNode* srcAppNode = msgBody.Find("sourceApp");
+  if(srcAppNode && srcAppNode->GetType() == TreeNode::STRING)
+  {
+    surface.SetSourceApp(srcAppNode->GetString());
+  }
+
   surface.KeepParser(parser);
   return true;
 }

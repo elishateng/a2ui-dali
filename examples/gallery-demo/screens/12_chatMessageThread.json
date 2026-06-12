@@ -1,0 +1,235 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "chatMessageThread",
+      "catalogId": "basic"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "chatMessageThread",
+      "components": [
+        {
+          "id": "root",
+          "component": "Card",
+          "child": "main-column"
+        },
+        {
+          "id": "main-column",
+          "component": "Column",
+          "children": [
+            "header",
+            "divider",
+            "messages"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "header",
+          "component": "Row",
+          "children": [
+            "channel-icon",
+            "channel-name"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "channel-icon",
+          "component": "Icon",
+          "name": "tag"
+        },
+        {
+          "id": "channel-name",
+          "component": "Text",
+          "text": {
+            "path": "/channelName"
+          },
+          "variant": "h3"
+        },
+        {
+          "id": "divider",
+          "component": "Divider"
+        },
+        {
+          "id": "messages",
+          "component": "Column",
+          "children": [
+            "message1",
+            "message2"
+          ],
+          "gap": 16,
+          "align": "start"
+        },
+        {
+          "id": "message1",
+          "component": "Row",
+          "children": [
+            "avatar1",
+            "msg1-content"
+          ],
+          "gap": 8,
+          "align": "start"
+        },
+        {
+          "id": "avatar1",
+          "component": "Image",
+          "url": {
+            "path": "/message1/avatar"
+          },
+          "description": {
+            "path": "/message1/username"
+          },
+          "fit": "cover",
+          "variant": "avatar"
+        },
+        {
+          "id": "msg1-content",
+          "component": "Column",
+          "children": [
+            "msg1-header",
+            "msg1-text"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "msg1-header",
+          "component": "Row",
+          "children": [
+            "msg1-username",
+            "msg1-time"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "msg1-username",
+          "component": "Text",
+          "text": {
+            "path": "/message1/username"
+          },
+          "variant": "h4"
+        },
+        {
+          "id": "msg1-time",
+          "component": "Text",
+          "text": {
+            "path": "/message1/time"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "msg1-text",
+          "component": "Text",
+          "text": {
+            "path": "/message1/text"
+          },
+          "variant": "body"
+        },
+        {
+          "id": "message2",
+          "component": "Row",
+          "children": [
+            "avatar2",
+            "msg2-content"
+          ],
+          "gap": 8,
+          "align": "start"
+        },
+        {
+          "id": "avatar2",
+          "component": "Image",
+          "url": {
+            "path": "/message2/avatar"
+          },
+          "description": {
+            "path": "/message2/username"
+          },
+          "fit": "cover",
+          "variant": "avatar"
+        },
+        {
+          "id": "msg2-content",
+          "component": "Column",
+          "children": [
+            "msg2-header",
+            "msg2-text"
+          ],
+          "gap": 8
+        },
+        {
+          "id": "msg2-header",
+          "component": "Row",
+          "children": [
+            "msg2-username",
+            "msg2-time"
+          ],
+          "gap": 8,
+          "align": "center"
+        },
+        {
+          "id": "msg2-username",
+          "component": "Text",
+          "text": {
+            "path": "/message2/username"
+          },
+          "variant": "h4"
+        },
+        {
+          "id": "msg2-time",
+          "component": "Text",
+          "text": {
+            "path": "/message2/time"
+          },
+          "variant": "caption"
+        },
+        {
+          "id": "msg2-text",
+          "component": "Text",
+          "text": {
+            "path": "/message2/text"
+          },
+          "variant": "body"
+        }
+      ]
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "chatMessageThread",
+      "path": "/",
+      "value": {
+        "channelName": "project-updates"
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "chatMessageThread",
+      "path": "/message1",
+      "value": {
+        "avatar": "sample-images/092f80161d74.jpg",
+        "username": "Mike Chen",
+        "time": "10:32 AM",
+        "text": "Just pushed the new API changes. Ready for review."
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "chatMessageThread",
+      "path": "/message2",
+      "value": {
+        "avatar": "sample-images/50ea23555c76.jpg",
+        "username": "Sarah Kim",
+        "time": "10:45 AM",
+        "text": "Great! I'll take a look after standup."
+      }
+    }
+  }
+]
