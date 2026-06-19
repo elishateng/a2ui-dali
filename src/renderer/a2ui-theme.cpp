@@ -8,6 +8,8 @@
 #include <dali-ui-foundation/public-api/ui-color-manager.h>
 #include <dali/integration-api/debug.h>
 #include <unordered_map>
+#include <cstdlib>
+#include <cstring>
 
 using namespace Dali;
 using namespace Dali::Ui;
@@ -42,14 +44,49 @@ const std::unordered_map<std::string, uint32_t>& BundledOneUILight()
   };
   return kPalette;
 }
+
+// Live-composer (a2ui-composer.ag-ui.com/gallery) web-parity palette. Values sampled
+// directly from the live gallery's high-res render. The token NAMES are unchanged
+// (dali-ui/OneUI colour ids) — only the resolved values mirror the composer's web look:
+// monochrome cards (white surface, near-black text, grey labels, light outlines).
+// Selected by default; export A2UI_THEME=oneui to fall back to the OneUI palette above.
+const std::unordered_map<std::string, uint32_t>& BundledComposerWeb()
+{
+  static const std::unordered_map<std::string, uint32_t> kPalette = {
+    {"Primary", 0x0A0A0A},                  // composer is monochrome: the "accent" is near-black
+    {"PrimaryHigh", 0x000000},
+    {"Background", 0xDEDEE9},                // lavender page
+    {"BackgroundApp", 0xF8F8FB},             // gallery section wrapper
+    {"Surface", 0xFFFFFF},                   // white card
+    {"SurfaceContainerLow", 0xF8F8FB},
+    {"SurfaceContainer", 0xF1F1F3},
+    {"SurfaceContainerHigh", 0xE5E5E5},
+    {"SurfaceContainerSemi", 0xF1F1F3},
+    {"OnSurfaceContainerHighest", 0x0A0A0A}, // near-black heading/value text
+    {"OnSurfaceContainer", 0x737373},        // grey label / muted text
+    {"OnSurfaceContainerLow", 0x999999},
+    {"OnSurfaceContainerFixed", 0xFFFFFF},   // on-primary text
+    {"Outline", 0xE5E5E5},                   // card / button / input outline (light)
+    {"OutlineLow", 0xE5E5E5},                // subtle card edge
+    {"Red", 0xF64141},
+    {"Green", 0x0BB075},
+  };
+  return kPalette;
+}
+
+bool UseComposerPalette()
+{
+  const char* t = std::getenv("A2UI_THEME");
+  return !(t && std::strcmp(t, "oneui") == 0); // default = composer web parity
+}
 } // namespace
 
 UiColor A2uiTheme::Color(const std::string& id)
 {
-  // Bundled OneUI values are authoritative on this target (the platform OneUI
-  // ThemeLoader is not yet wired into dali-ui here). When it is, flip the order so
-  // UiColorManager wins — the call site code does not change.
-  const auto& palette = BundledOneUILight();
+  // Target A (live composer) is the active styling reference: resolve from the
+  // composer-web palette by default; A2UI_THEME=oneui restores the OneUI look.
+  // Call sites are unchanged — they still ask by semantic colour id.
+  const auto& palette = UseComposerPalette() ? BundledComposerWeb() : BundledOneUILight();
   auto it = palette.find(id);
   if(it != palette.end())
   {

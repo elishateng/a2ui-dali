@@ -20,21 +20,26 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
     return container;
   }
 
-  // Tab header row
+  // Tab header row (web style: underline tabs, not filled pills) with a full-width hairline
+  // under it; the active tab shows a dark underline bar + dark label, the rest are muted.
   FlexLayout tabHeader = FlexLayout::New();
   tabHeader.SetDirection(FlexDirection::ROW);
   tabHeader.SetRequestedWidth(MATCH_PARENT);
-  tabHeader.SetRequestedHeight(44.0f);
+  tabHeader.SetRequestedHeight(WRAP_CONTENT);
+  tabHeader.SetBorderlineWidth(Metrics::BorderInput());
+  tabHeader.SetBorderlineColor(A2uiTheme::Color("OutlineLow"));
 
-  // Content area
+  // Content area — only the active tab's content is parented here, so hidden tabs take no
+  // vertical space (previously every tab's content was added and inflated the card height).
   FlexLayout contentArea = FlexLayout::New();
   contentArea.SetDirection(FlexDirection::COLUMN);
   contentArea.SetRequestedWidth(MATCH_PARENT);
   contentArea.SetRequestedHeight(WRAP_CONTENT);
+  contentArea.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(12)), 0));
 
-  // Collect tab content views
-  std::vector<View> tabContentViews;
-  std::vector<FlexLayout> tabButtons;
+  std::vector<View>  tabContentViews;
+  std::vector<Label> tabLabels;
+  std::vector<View>  tabUnderlines;
 
   int tabIndex = 0;
   for(auto it = tabsNode->CBegin(); it != tabsNode->CEnd(); ++it)
@@ -42,65 +47,65 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
     const TreeNode& tabDef = (*it).second;
     const TreeNode* titleNode = tabDef.Find("title");
     const TreeNode* childNode = tabDef.Find("child");
+    std::string title = (titleNode && titleNode->GetType() == TreeNode::STRING) ? titleNode->GetString() : "Tab";
+    std::string childId = (childNode && childNode->GetType() == TreeNode::STRING) ? childNode->GetString() : "";
+    bool active = (tabIndex == 0);
 
-    std::string title = (titleNode && titleNode->GetType() == TreeNode::STRING)
-                        ? titleNode->GetString() : "Tab";
-    std::string childId = (childNode && childNode->GetType() == TreeNode::STRING)
-                          ? childNode->GetString() : "";
-
-    // Tab button
+    // Tab button = a Column [label, underline bar] so the active underline sits on the
+    // header's hairline. No background fill (web underline tabs).
     FlexLayout tabBtn = FlexLayout::New();
-    tabBtn.SetDirection(FlexDirection::ROW);
-    tabBtn.SetJustifyContent(FlexJustify::CENTER);
+    tabBtn.SetDirection(FlexDirection::COLUMN);
     tabBtn.SetAlignItems(FlexAlign::CENTER);
-    tabBtn.SetRequestedHeight(44.0f);
-    tabBtn.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexBasis(0.0f));
-    tabBtn.SetBackgroundColor(tabIndex == 0 ? COLOR_TAB_ACTIVE : COLOR_TAB_INACTIVE);
-    tabBtn.SetCornerRadius(6.0f, 6.0f, 0.0f, 0.0f);
+    tabBtn.SetRequestedWidth(WRAP_CONTENT);
+    tabBtn.SetRequestedHeight(WRAP_CONTENT);
+    if(tabIndex > 0) tabBtn.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(16)), 0, 0, 0));
 
     Label tabLabel = Label::New(title.c_str());
     tabLabel.SetFontSize(Metrics::FontButton());
-    tabLabel.SetTextColor(UiColor(0xFFFFFF));
+    tabLabel.SetTextColor(active ? COLOR_TEXT_DEFAULT : COLOR_TEXT_MUTED);
+    tabLabel.SetFontWeight(active ? Text::FontWeight::SEMI_BOLD : Text::FontWeight::NORMAL);
     tabLabel.SetRequestedWidth(WRAP_CONTENT);
     tabLabel.SetRequestedHeight(WRAP_CONTENT);
+    tabLabel.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(10)), static_cast<uint16_t>(Metrics::Dp(8))));
     tabBtn.Add(tabLabel);
 
-    tabButtons.push_back(tabBtn);
-    tabHeader.Add(tabBtn);
+    View underline = View::New();
+    underline.SetRequestedWidth(WRAP_CONTENT);
+    underline.SetRequestedHeight(Metrics::Dp(2));
+    underline.SetBackgroundColor(active ? COLOR_TEXT_DEFAULT : UiColor(0x00000000));
+    underline.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::STRETCH));
+    tabBtn.Add(underline);
 
-    // Tab content
-    View tabContent;
-    if(!childId.empty())
-    {
-      tabContent = RenderComponent(childId, components, ctx);
-    }
-    else
-    {
-      tabContent = View::New();
-    }
+    tabHeader.Add(tabBtn);
+    tabLabels.push_back(tabLabel);
+    tabUnderlines.push_back(underline);
+
+    View tabContent = childId.empty() ? View::New() : RenderComponent(childId, components, ctx);
     tabContent.SetRequestedWidth(MATCH_PARENT);
-    tabContent.SetProperty(Actor::Property::VISIBLE, tabIndex == 0);
     tabContentViews.push_back(tabContent);
-    contentArea.Add(tabContent);
+    if(active) contentArea.Add(tabContent);
+
+    // Tap target spans the whole tab button.
+    {
+      int i = tabIndex;
+      Dali::TapGestureDetector det = Dali::TapGestureDetector::New();
+      det.Attach(tabBtn);
+      det.DetectedSignal().Connect(this,
+        [i, contentArea, tabLabels, tabUnderlines, tabContentViews](Dali::Actor, const Dali::TapGesture&) mutable {
+          for(int j = 0; j < static_cast<int>(tabLabels.size()); ++j)
+          {
+            bool sel = (j == i);
+            tabLabels[j].SetTextColor(sel ? COLOR_TEXT_DEFAULT : COLOR_TEXT_MUTED);
+            tabLabels[j].SetFontWeight(sel ? Text::FontWeight::SEMI_BOLD : Text::FontWeight::NORMAL);
+            tabUnderlines[j].SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : UiColor(0x00000000));
+          }
+          while(contentArea.GetChildCount() > 0) contentArea.Remove(contentArea.GetChildAt(0u));
+          contentArea.Add(tabContentViews[i]);
+        });
+      mTapDetectors.push_back(det);
+    }
 
     tabIndex++;
-  }
-
-  // Tab click handlers
-  for(int i = 0; i < static_cast<int>(tabButtons.size()); ++i)
-  {
-    tabButtons[i].AsInteractive(
-      [this, i, tabButtons, tabContentViews](InteractiveTrait& trait) mutable {
-        trait.ClickedSignal().Connect(this,
-          [i, tabButtons, tabContentViews](View, const InputEvent&) mutable -> bool {
-            for(int j = 0; j < static_cast<int>(tabButtons.size()); ++j)
-            {
-              tabButtons[j].SetBackgroundColor(j == i ? COLOR_TAB_ACTIVE : COLOR_TAB_INACTIVE);
-              tabContentViews[j].SetProperty(Actor::Property::VISIBLE, j == i);
-            }
-            return true;
-          });
-      });
   }
 
   container.Add(tabHeader);

@@ -9,35 +9,30 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
 {
   if(!comp.rawNode) return View::New();
 
-  // dali-ui has no native modal/dialog. Compose one: the trigger is rendered visibly,
-  // and tapping it reveals the content card (hidden until then), with an X to close.
+  // A2UI Modal `trigger` is a *reference* to a component that is already rendered in the
+  // layout (e.g. the movie card lists watch-trailer-btn in its content column AND names it
+  // as the modal trigger) — re-rendering it here produced a duplicate button. So the Modal
+  // renders only its overlay content, hidden until opened, and wires the open tap onto the
+  // already-rendered trigger view by id (if present) instead of drawing a second copy.
   FlexLayout container = FlexLayout::New();
   container.SetDirection(FlexDirection::COLUMN);
   container.SetRequestedWidth(MATCH_PARENT);
   container.SetRequestedHeight(WRAP_CONTENT);
-  container.SetAlignItems(FlexAlign::CENTER);
 
-  // Trigger — the visible element (accept "trigger" or v0.8 "entryPointChild").
-  const TreeNode* triggerNode = comp.rawNode->Find("trigger");
-  if(!triggerNode) triggerNode = comp.rawNode->Find("entryPointChild");
-  View triggerView;
-  if(triggerNode && triggerNode->GetType() == TreeNode::STRING)
-  {
-    triggerView = RenderComponent(triggerNode->GetString(), components, ctx);
-    if(triggerView) container.Add(triggerView);
-  }
-
-  // Content card — hidden until the trigger is tapped.
   FlexLayout modalCard = FlexLayout::New();
   modalCard.SetDirection(FlexDirection::COLUMN);
   modalCard.SetRequestedWidth(MATCH_PARENT);
-  modalCard.SetRequestedHeight(WRAP_CONTENT);
+  // Collapsed to zero height while hidden — a VISIBLE=false FlexLayout still reserves its
+  // WRAP_CONTENT height, which left a tall empty gap under cards with a hidden modal (e.g.
+  // the movie card). An open handler restores it to WRAP_CONTENT.
+  modalCard.SetRequestedHeight(0.0f);
   modalCard.SetBackgroundColor(COLOR_CARD_BG);
-  modalCard.SetCornerRadius(16.0f);
+  modalCard.SetCornerRadius(Metrics::RadiusCard());
   modalCard.SetBorderlineWidth(Metrics::BorderCard());
   modalCard.SetBorderlineColor(A2uiTheme::Color("Outline"));
-  modalCard.SetPadding(Extents(24, 24, 20, 20));
-  modalCard.SetMargin(Extents(8, 8, 12, 8));
+  modalCard.SetPadding(Extents(static_cast<uint16_t>(Metrics::Dp(20)), static_cast<uint16_t>(Metrics::Dp(20)),
+                               static_cast<uint16_t>(Metrics::Dp(16)), static_cast<uint16_t>(Metrics::Dp(16))));
+  modalCard.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(8)), 0));
   modalCard.SetProperty(Actor::Property::VISIBLE, false);
 
   // Close (X) row.
@@ -45,19 +40,21 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
   closeRow.SetDirection(FlexDirection::ROW);
   closeRow.SetJustifyContent(FlexJustify::FLEX_END);
   closeRow.SetRequestedWidth(MATCH_PARENT);
-  closeRow.SetRequestedHeight(28.0f);
+  closeRow.SetRequestedHeight(Metrics::Dp(24));
   Label closeLabel = Label::New("X");
   closeLabel.SetFontSize(Metrics::FontInput());
   closeLabel.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));
-  closeLabel.SetRequestedWidth(28.0f);
-  closeLabel.SetRequestedHeight(28.0f);
+  closeLabel.SetRequestedWidth(Metrics::Dp(24));
+  closeLabel.SetRequestedHeight(Metrics::Dp(24));
   closeRow.Add(closeLabel);
   {
+    // Close → hide AND re-collapse to zero height (so the hidden overlay reserves no space).
     Dali::TapGestureDetector closeDet = Dali::TapGestureDetector::New();
     closeDet.Attach(closeRow);
     closeDet.DetectedSignal().Connect(this,
       [modalCard](Dali::Actor, const Dali::TapGesture&) mutable {
         modalCard.SetProperty(Actor::Property::VISIBLE, false);
+        modalCard.SetRequestedHeight(0.0f);
       });
     mTapDetectors.push_back(closeDet);
   }
@@ -73,16 +70,26 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
   }
   container.Add(modalCard);
 
-  // Tapping the trigger reveals the card.
-  if(triggerView)
+  // Open path: the trigger is a sibling already rendered earlier in the surface (the column
+  // lists it before the Modal), so look it up by id in the view map and attach a tap that
+  // reveals + expands the overlay. No duplicate trigger is drawn. If the trigger hasn't been
+  // rendered yet (declared after the Modal), the overlay simply stays collapsed.
+  const TreeNode* triggerNode = comp.rawNode->Find("trigger");
+  if(!triggerNode) triggerNode = comp.rawNode->Find("entryPointChild");
+  if(triggerNode && triggerNode->GetType() == TreeNode::STRING)
   {
-    Dali::TapGestureDetector openDet = Dali::TapGestureDetector::New();
-    openDet.Attach(triggerView);
-    openDet.DetectedSignal().Connect(this,
-      [modalCard](Dali::Actor, const Dali::TapGesture&) mutable {
-        modalCard.SetProperty(Actor::Property::VISIBLE, true);
-      });
-    mTapDetectors.push_back(openDet);
+    View triggerView = mDiffEngine.GetView(triggerNode->GetString());
+    if(triggerView)
+    {
+      Dali::TapGestureDetector openDet = Dali::TapGestureDetector::New();
+      openDet.Attach(triggerView);
+      openDet.DetectedSignal().Connect(this,
+        [modalCard](Dali::Actor, const Dali::TapGesture&) mutable {
+          modalCard.SetProperty(Actor::Property::VISIBLE, true);
+          modalCard.SetRequestedHeight(WRAP_CONTENT);
+        });
+      mTapDetectors.push_back(openDet);
+    }
   }
 
   return container;

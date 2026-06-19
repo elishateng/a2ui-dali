@@ -111,9 +111,19 @@ private:
                             DataContext& ctx);
   Dali::Ui::View RenderIcon(const ComponentModel& comp, DataContext& ctx);
 
+  /// Data-driven child list: children = {path, componentId}. Iterates the data array at
+  /// `path`, instantiates `componentId` per element under a per-item scoped DataContext,
+  /// and Adds each to outContainer. Returns true if the OBJECT template form was handled
+  /// (so the caller must not fall through to the static childIds path).
+  bool RenderTemplateChildren(const ComponentModel& comp,
+                              const SurfaceComponentsModel& components,
+                              DataContext& ctx, Dali::Ui::View outContainer,
+                              bool isRow, float gap);
+
   // === Checks validation ===
   void SetupChecks(const ComponentModel& comp, DataContext& ctx,
-                   Dali::Ui::Label errorLabel, const std::string& boundPath);
+                   Dali::Ui::Label errorLabel, const std::string& boundPath,
+                   Dali::Ui::InputField inputField = Dali::Ui::InputField());
 
   // === Data binding helpers ===
   std::string ResolveString(const Dali::Ui::TreeNode* propNode, const DataContext& ctx) const;

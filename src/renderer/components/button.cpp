@@ -7,10 +7,10 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
                                 const SurfaceComponentsModel& components,
                                 DataContext& ctx)
 {
-  // A2UI's default button (no variant) is Primary-styled — the reference renderer's
-  // CreateButtonDefault uses OneUIColor.Primary. So default → "primary".
-  const char* variant = comp.rawNode ? GetNodeString(*comp.rawNode, "variant", "primary") : "primary";
-  bool isPrimary = (strcmp(variant, "primary") == 0);
+  // Live-composer styles every button as a white outlined pill (default/primary alike);
+  // only `borderless` drops the fill+border to a text-only button. The A2UI default
+  // variant is "default".
+  const char* variant = comp.rawNode ? GetNodeString(*comp.rawNode, "variant", "default") : "default";
   bool isBorderless = (strcmp(variant, "borderless") == 0);
 
   // Single FlexLayout — the previous nested (borderWrap + button) structure
@@ -37,18 +37,21 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
   // Don't let the parent Column's align:stretch override our fixed size.
   button.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
 
-  UiColor bgColor(0xf3f4f6);  // gray-100 default (secondary)
-  UiColor fgColor = COLOR_TEXT_DEFAULT;
-  if(isPrimary)
-  {
-    bgColor = COLOR_PRIMARY;       // OneUI Primary blue (#387AFF)
-    fgColor = COLOR_ON_PRIMARY;
-  }
-  else if(isBorderless)
+  // White outlined pill: white fill, light outline, near-black label. borderless = text-only.
+  UiColor bgColor = COLOR_CARD_BG;       // white surface
+  UiColor fgColor = COLOR_TEXT_DEFAULT;  // near-black label
+  bool outlined = true;
+  if(isBorderless)
   {
     bgColor = UiColor(0x00000000);
+    outlined = false;
   }
   button.SetBackgroundColor(bgColor);
+  if(outlined)
+  {
+    button.SetBorderlineWidth(Metrics::BorderInput());      // 1 dp
+    button.SetBorderlineColor(COLOR_BTN_BORDER);            // Outline #e5e5e5
+  }
 
   float btnWidth = kBtnMinWidth;
   if(!comp.childId.empty())
@@ -68,7 +71,14 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
       std::size_t byteLen = text.Size();
       labelChild.SetMultiLine(false);
       labelChild.SetRequestedHeight(Metrics::Dp(20));
-      if(byteLen <= 4)
+      // Only an actual single glyph / emoji / symbol gets the fixed square; short ASCII
+      // words like "Yes"/"No"/"OK" must be sized as text or they clip to a stub ("—").
+      const char* tbytes = text.CStr();
+      bool hasNonAscii = false;
+      for(std::size_t i = 0; i < byteLen; ++i)
+        if(static_cast<unsigned char>(tbytes[i]) >= 0x80) { hasNonAscii = true; break; }
+      bool isGlyphButton = (byteLen <= 4 && (hasNonAscii || byteLen <= 1));
+      if(isGlyphButton)
       {
         // Single glyph / icon / emoji button → a fixed square so a row of them is
         // uniform (e.g. music-player prev/play/next); the pill radius = a circle.
@@ -109,11 +119,9 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
       detector.DetectedSignal().Connect(this,
         [this, actionNode, compId, capturedCtx](
           Dali::Actor, const Dali::TapGesture&) mutable {
-          DALI_LOG_ERROR("[A2UI] Button TAPPED: %s\n", compId.c_str());
           mActionDispatcher.Dispatch(*actionNode, compId, capturedCtx);
         });
       mTapDetectors.push_back(detector);
-      DALI_LOG_ERROR("[A2UI] Button tap-detector attached: %s\n", compId.c_str());
     }
   }
 

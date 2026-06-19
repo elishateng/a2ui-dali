@@ -28,13 +28,44 @@
 #include <dali/public-api/adaptor-framework/window-data.h>
 #include <dali/public-api/math/rect.h>
 #include <dali-ui-foundation/dali-ui-foundation.h>
+#include <dali-ui-foundation/public-api/label.h>
 
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
 
 namespace
 {
+
+// Turn an input path like ".../01_loginForm.jsonl" into a gallery title "Login Form".
+std::string TitleFromPath(const std::string& path)
+{
+  auto slash = path.find_last_of("/\\");
+  std::string base = (slash == std::string::npos) ? path : path.substr(slash + 1);
+  auto dot = base.find_last_of('.');
+  if(dot != std::string::npos) base = base.substr(0, dot);
+  std::size_t i = 0;
+  while(i < base.size() && std::isdigit(static_cast<unsigned char>(base[i]))) ++i;
+  if(i < base.size() && base[i] == '_') base = base.substr(i + 1);
+  std::string out;
+  for(std::size_t k = 0; k < base.size(); ++k)
+  {
+    char c = base[k];
+    if(c == '_' || c == '-') { out += ' '; continue; }
+    if(k > 0 && std::isupper(static_cast<unsigned char>(c)) &&
+       !std::isupper(static_cast<unsigned char>(base[k - 1]))) out += ' ';
+    out += c;
+  }
+  bool wordStart = true;  // Title Case every word
+  for(char& c : out)
+  {
+    if(wordStart && std::isalpha(static_cast<unsigned char>(c)))
+      c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    wordStart = (c == ' ');
+  }
+  return out;
+}
 
 class BasicRendererApp : public Dali::ConnectionTracker
 {
@@ -49,7 +80,7 @@ private:
   void OnInit(Dali::Application app)
   {
     Dali::Window window = app.GetWindow();
-    window.SetBackgroundColor(Dali::Ui::UiColor(0xFFFFFF)); // OneUI BackgroundApp (cards = SurfaceContainerLow on top)
+    window.SetBackgroundColor(Dali::Ui::UiColor(0xDEDEE9)); // live-composer lavender page
 
     Dali::Ui::FlexLayout root = Dali::Ui::FlexLayout::New();
     root.SetDirection(Dali::Ui::FlexDirection::COLUMN);
@@ -58,12 +89,30 @@ private:
     root.SetPadding(Dali::Extents(16, 16, 16, 16));
     window.Add(root);
 
+    // Gallery chrome: a light-grey rounded section with a title label at the top-left,
+    // mirroring the live composer gallery (each example card sits inside such a section).
+    Dali::Ui::FlexLayout section = Dali::Ui::FlexLayout::New();
+    section.SetDirection(Dali::Ui::FlexDirection::COLUMN);
+    section.SetRequestedWidth(Dali::Ui::MATCH_PARENT);
+    section.SetRequestedHeight(Dali::Ui::WRAP_CONTENT);
+    section.SetBackgroundColor(Dali::Ui::UiColor(0xF8F8FB));
+    section.SetCornerRadius(16.0f);
+    section.SetPadding(Dali::Extents(16, 16, 16, 16));
+    root.Add(section);
+
+    Dali::Ui::Label title = Dali::Ui::Label::New();
+    title.SetText(Dali::String(TitleFromPath(mJsonlPath).c_str()));
+    title.SetTextColor(Dali::Ui::UiColor(0x737373));
+    title.SetFontSize(13.0f);
+    title.SetMargin(Dali::Extents(2, 0, 0, 12));
+    section.Add(title);
+
     // Resolve local image/icon resources (icons/<name>.png, etc.) relative to res/.
     mHost.GetRenderer().SetImageDir("res/");
 
-    // The host hands back each surface's rooted view; the app just adds it to its layout.
-    mHost.SetOnBeginRenderingSurface([root](const std::string&, Dali::Ui::View view) mutable {
-      root.Add(view);
+    // The host hands back each surface's rooted view; the app adds it under the section.
+    mHost.SetOnBeginRenderingSurface([section](const std::string&, Dali::Ui::View view) mutable {
+      section.Add(view);
     });
     mHost.SetOnUserAction([](const std::string& surfaceId, const std::string& json) {
       std::printf("[a2ui-dali] action surface=%s %s\n", surfaceId.c_str(), json.c_str());

@@ -18,6 +18,10 @@
 #include <sstream>
 #include <vector>
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cerrno>
 #include <algorithm>
 
 using Dali::Ui::JsonParser;
@@ -26,12 +30,100 @@ using Dali::Ui::TreeNode;
 namespace A2ui
 {
 
+// Format a float as the shortest decimal that round-trips back to the same float32 — the
+// way JS prints a number on the web. Avoids both the default ostream's 6-significant-figure
+// truncation (12458.32 → "12458.3") and trailing floating-point noise (→ "12458.3203125").
+std::string DataModel::FormatFloatToken(float f)
+{
+  if(std::isnan(f) || std::isinf(f)) return "0";
+  // Whole numbers: plain fixed notation (avoids %g's "1e+06" for e.g. 1000000.0).
+  if(std::fabs(f) < 1e15f && f == std::floor(f))
+  {
+    char w[32];
+    std::snprintf(w, sizeof(w), "%.0f", static_cast<double>(f));
+    return std::string(w);
+  }
+  // Shortest decimal that round-trips to within one ULP. The one-ULP tolerance undoes the
+  // last-bit rounding of the dali JSON float parser, so a value it stored as 0.45000005
+  // prints as the "0.45" it was authored as — while a genuinely distinct float keeps its
+  // own shortest form.
+  char buf[64];
+  std::snprintf(buf, sizeof(buf), "%.9g", static_cast<double>(f));
+  float ulp = std::fmax(std::nextafterf(f, HUGE_VALF) - f, f - std::nextafterf(f, -HUGE_VALF));
+  for(int prec = 1; prec <= 9; ++prec)
+  {
+    char cand[64];
+    std::snprintf(cand, sizeof(cand), "%.*g", prec, static_cast<double>(f));
+    if(std::fabs(std::strtof(cand, nullptr) - f) <= ulp) { std::strcpy(buf, cand); break; }
+  }
+  return std::string(buf);
+}
+
+// The dali JSON parser stores every integer in a 32-bit field, so a value beyond ±2^31
+// (e.g. a 850000000000 market cap) is silently mangled at parse time. We can't widen the
+// shared parser, so before parsing we quote integer literals that overflow int32 — the
+// parser then keeps them verbatim as strings (full precision), and the consumers that read
+// them (formatCurrency / GetFloat) accept a numeric string. Floats and in-range integers
+// are untouched. String contents are skipped so digits inside text are never rewritten.
+std::string DataModel::WidenLargeIntegers(const std::string& json)
+{
+  std::string out;
+  out.reserve(json.size() + 16);
+  bool inStr = false;
+  for(std::size_t i = 0; i < json.size();)
+  {
+    char c = json[i];
+    if(inStr)
+    {
+      out += c;
+      if(c == '\\' && i + 1 < json.size()) { out += json[i + 1]; i += 2; continue; }
+      if(c == '"') inStr = false;
+      ++i; continue;
+    }
+    if(c == '"') { inStr = true; out += c; ++i; continue; }
+
+    // A numeric token in value position: optional '-' then a digit run. (Object keys are
+    // always quoted, so an unquoted number here is always a value.)
+    bool startsNum = (c >= '0' && c <= '9') ||
+                     (c == '-' && i + 1 < json.size() && json[i + 1] >= '0' && json[i + 1] <= '9');
+    if(startsNum)
+    {
+      std::size_t j = i;
+      if(json[j] == '-') ++j;
+      bool isFloat = false;
+      while(j < json.size())
+      {
+        char d = json[j];
+        if(d >= '0' && d <= '9') { ++j; }
+        else if(d == '.' || d == 'e' || d == 'E' || d == '+' || d == '-') { isFloat = true; ++j; }
+        else break;
+      }
+      std::string tok = json.substr(i, j - i);
+      bool overflow = false;
+      if(!isFloat)
+      {
+        errno = 0;
+        long long v = std::strtoll(tok.c_str(), nullptr, 10);
+        if(errno == ERANGE || v > 2147483647LL || v < -2147483648LL) overflow = true;
+      }
+      if(overflow) { out += '"'; out += tok; out += '"'; }
+      else         { out += tok; }
+      i = j; continue;
+    }
+    out += c; ++i;
+  }
+  return out;
+}
+
 // ========================================================================
 // Data mutation
 // ========================================================================
 
-bool DataModel::SetData(const std::string& path, const std::string& jsonString)
+bool DataModel::SetData(const std::string& path, const std::string& rawJson)
 {
+  // Preserve integers beyond int32 (the shared dali parser would mangle them) before any
+  // parse, on both the whole-document and merge paths.
+  std::string jsonString = WidenLargeIntegers(rawJson);
   if(path == "/" || path.empty())
   {
     mJsonString = jsonString;
@@ -84,9 +176,7 @@ bool DataModel::SetBoolValue(const std::string& path, bool value)
 
 bool DataModel::SetFloatValue(const std::string& path, float value)
 {
-  std::ostringstream oss;
-  oss << value;
-  return SetData(path, oss.str());
+  return SetData(path, FormatFloatToken(value));
 }
 
 // ========================================================================
@@ -187,11 +277,7 @@ std::string DataModel::GetString(const std::string& path) const
     case TreeNode::INTEGER:
       return std::to_string(node->GetInteger());
     case TreeNode::FLOAT:
-    {
-      std::ostringstream oss;
-      oss << node->GetFloat();
-      return oss.str();
-    }
+      return FormatFloatToken(node->GetFloat());
     case TreeNode::BOOLEAN:
       return node->GetBoolean() ? "true" : "false";
     default:
@@ -211,6 +297,18 @@ float DataModel::GetFloat(const std::string& path, float fallback) const
     return node->GetFloat();
   if(node->GetType() == TreeNode::INTEGER)
     return static_cast<float>(node->GetInteger());
+  if(node->GetType() == TreeNode::STRING)
+  {
+    // A numeric value may arrive as a string (a >int32 integer is stored quoted to keep its
+    // precision); parse it so slider/number consumers still see a float.
+    const char* s = node->GetString();
+    if(s && *s)
+    {
+      char* end = nullptr;
+      float v = std::strtof(s, &end);
+      if(end != s) return v;
+    }
+  }
 
   return fallback;
 }
@@ -633,7 +731,7 @@ std::string DataModel::TreeNodeToJson(const TreeNode& node)
       oss << node.GetInteger();
       break;
     case TreeNode::FLOAT:
-      oss << node.GetFloat();
+      oss << FormatFloatToken(node.GetFloat());
       break;
     case TreeNode::BOOLEAN:
       oss << (node.GetBoolean() ? "true" : "false");

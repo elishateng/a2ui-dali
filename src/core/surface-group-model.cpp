@@ -14,7 +14,6 @@
  */
 
 #include "surface-group-model.h"
-#include <dali/integration-api/debug.h>
 #include <algorithm>
 
 namespace A2ui
@@ -32,9 +31,6 @@ SurfaceModel& SurfaceGroupModel::GetOrCreateSurface(const std::string& surfaceId
   {
     auto [insertIt, ok] = mSurfaces.emplace(surfaceId, SurfaceModel());
     insertIt->second.Create(surfaceId, catalogId);
-
-    DALI_LOG_ERROR("[A2UI] SurfaceGroup: created surface '%s' (catalog: %s), total: %zu\n",
-                   surfaceId.c_str(), catalogId.c_str(), mSurfaces.size());
 
     if(mOnSurfaceChange) mOnSurfaceChange(surfaceId, true);
     return insertIt->second;
@@ -62,9 +58,6 @@ void SurfaceGroupModel::DeleteSurface(const std::string& surfaceId)
     it->second.Delete();
     mSurfaces.erase(it);
     mPlacements.erase(surfaceId);
-
-    DALI_LOG_ERROR("[A2UI] SurfaceGroup: deleted surface '%s', remaining: %zu\n",
-                   surfaceId.c_str(), mSurfaces.size());
 
     if(mOnSurfaceChange) mOnSurfaceChange(surfaceId, false);
   }

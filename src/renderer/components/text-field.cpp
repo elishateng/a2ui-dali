@@ -11,7 +11,7 @@ View A2uiRenderer::RenderTextField(const ComponentModel& comp, DataContext& ctx)
   container.SetDirection(FlexDirection::COLUMN);
   container.SetRequestedWidth(MATCH_PARENT);
   container.SetRequestedHeight(WRAP_CONTENT);
-  container.SetMargin(Extents(0, 0, 4, 4));
+  container.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(4)), static_cast<uint16_t>(Metrics::Dp(4))));
 
   // Label
   const char* labelText = GetNodeString(*comp.rawNode, "label", "");
@@ -21,8 +21,8 @@ View A2uiRenderer::RenderTextField(const ComponentModel& comp, DataContext& ctx)
     label.SetFontSize(Metrics::FontLabel());
     label.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));  // OneUIColor.OnSurfaceContainerLow
     label.SetRequestedWidth(MATCH_PARENT);
-    label.SetRequestedHeight(WRAP_CONTENT);
-    label.SetMargin(Extents(0, 0, 0, 4));
+    label.SetRequestedHeight(Metrics::LineHeight(Metrics::FontLabel()));
+    label.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(Metrics::Dp(4))));
     container.Add(label);
   }
 
@@ -47,8 +47,12 @@ View A2uiRenderer::RenderTextField(const ComponentModel& comp, DataContext& ctx)
   inputField.SetCursorWidth(2);
   inputField.SetSelectionColor(A2uiTheme::Color("Primary"));
   inputField.SetRequestedWidth(MATCH_PARENT);
-  inputField.SetRequestedHeight(WRAP_CONTENT);
-  inputField.SetPadding(Extents(12, 12, 10, 10));
+  // Web inputs are a fixed ~44px tall box; a WRAP_CONTENT input collapsed to ~24px (much
+  // shorter than the web), so pin the height and keep generous horizontal padding.
+  inputField.SetRequestedHeight(Metrics::InputHeight());
+  inputField.SetMinimumHeight(Metrics::InputHeight());
+  inputField.SetPadding(Extents(static_cast<uint16_t>(Metrics::Dp(12)), static_cast<uint16_t>(Metrics::Dp(12)),
+                                static_cast<uint16_t>(Metrics::Dp(10)), static_cast<uint16_t>(Metrics::Dp(10))));
   inputField.SetBackgroundColor(COLOR_INPUT_BG);
   inputField.SetCornerRadius(Metrics::RadiusInput());
   inputField.SetBorderlineWidth(Metrics::BorderInput());                 // OneUI outlined input box
@@ -92,13 +96,13 @@ View A2uiRenderer::RenderTextField(const ComponentModel& comp, DataContext& ctx)
   errorLabel.SetRequestedWidth(MATCH_PARENT);
   errorLabel.SetRequestedHeight(WRAP_CONTENT);
   errorLabel.SetProperty(Actor::Property::VISIBLE, false);
-  errorLabel.SetMargin(Extents(0, 0, 2, 0));
+  errorLabel.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(2)), 0));
   container.Add(errorLabel);
 
-  // Setup checks validation
+  // Setup checks validation (pass the InputField so an invalid field also gets a red outline)
   if(!boundPath.empty())
   {
-    SetupChecks(comp, ctx, errorLabel, boundPath);
+    SetupChecks(comp, ctx, errorLabel, boundPath, inputField);
   }
 
   return container;

@@ -14,7 +14,6 @@
  */
 
 #include "surface-model.h"
-#include <dali/integration-api/debug.h>
 
 namespace A2ui
 {
@@ -27,24 +26,20 @@ void SurfaceModel::Create(const std::string& surfaceId, const std::string& catal
   mComponents.Clear();
   mDataModel.Clear();
   mParsers.clear();
-  DALI_LOG_ERROR("[A2UI] Surface created: %s (catalog: %s)\n", surfaceId.c_str(), catalogId.c_str());
 }
 
 void SurfaceModel::UpdateComponents(const Dali::Ui::TreeNode& componentsArray)
 {
   mComponents.AddComponents(componentsArray);
-  DALI_LOG_ERROR("[A2UI] Components updated: %zu total\n", mComponents.GetCount());
 }
 
 void SurfaceModel::UpdateDataModel(const std::string& path, const Dali::Ui::TreeNode& value)
 {
   mDataModel.SetDataFromNode(path, value);
-  DALI_LOG_ERROR("[A2UI] DataModel updated at path: %s\n", path.c_str());
 }
 
 void SurfaceModel::Delete()
 {
-  DALI_LOG_ERROR("[A2UI] Surface deleted: %s\n", mSurfaceId.c_str());
   Reset();
 }
 

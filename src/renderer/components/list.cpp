@@ -3,6 +3,61 @@
 namespace A2ui
 {
 
+bool A2uiRenderer::RenderTemplateChildren(const ComponentModel& comp,
+                                          const SurfaceComponentsModel& components,
+                                          DataContext& ctx, View outContainer,
+                                          bool isRow, float gap)
+{
+  if(!comp.rawNode) return false;
+  const TreeNode* childrenNode = comp.rawNode->Find("children");
+  if(!childrenNode || childrenNode->GetType() != TreeNode::OBJECT) return false;
+  const TreeNode* cidNode  = childrenNode->Find("componentId");
+  const TreeNode* pathNode = childrenNode->Find("path");
+  if(!(cidNode && cidNode->GetType() == TreeNode::STRING &&
+       pathNode && pathNode->GetType() == TreeNode::STRING))
+  {
+    return false;  // not the {componentId, path} form (e.g. the inline template{} form)
+  }
+
+  std::string tmplId          = cidNode->GetString();
+  std::string dataBindingPath = ctx.Resolve(pathNode->GetString());
+  const TreeNode* arrayNode   = ctx.GetDataModel().ResolvePath(dataBindingPath);
+  if(arrayNode && arrayNode->GetType() == TreeNode::ARRAY)
+  {
+    int itemIndex = 0;
+    for(auto it = arrayNode->CBegin(); it != arrayNode->CEnd(); ++it)
+    {
+      DataContext childCtx =
+        ctx.CreateChildContext(dataBindingPath + "/" + std::to_string(itemIndex));
+      View itemView = RenderComponent(tmplId, components, childCtx);
+      if(itemView)
+      {
+        // In a Column the template rows fill the full width; in a Row the items share it
+        // evenly (a 0 basis + 0 width, or a MATCH_PARENT item fills the row and hides the
+        // rest — e.g. a weather forecast showing only the first day).
+        if(!isRow)
+        {
+          itemView.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::STRETCH));
+        }
+        else
+        {
+          itemView.SetLayoutParams(
+            FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexShrink(1.0f).SetFlexBasis(0.0f));
+          itemView.SetRequestedWidth(0.0f);
+        }
+        if(gap > 0.0f && itemIndex > 0)
+        {
+          uint16_t g = static_cast<uint16_t>(gap);
+          itemView.SetMargin(isRow ? Extents(g, 0, 0, 0) : Extents(0, 0, g, 0));
+        }
+        outContainer.Add(itemView);
+      }
+      itemIndex++;
+    }
+  }
+  return true;  // recognized the template form (even if the array was empty)
+}
+
 View A2uiRenderer::RenderList(const ComponentModel& comp,
                               const SurfaceComponentsModel& components,
                               DataContext& ctx)
@@ -35,7 +90,11 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
   listContainer.SetRequestedWidth(MATCH_PARENT);
   listContainer.SetRequestedHeight(WRAP_CONTENT);
 
-  float gap = GetNodeFloat(*comp.rawNode, "gap", 4.0f);
+  // A message-declared `gap` (logical) wins and is dp-scaled; otherwise list rows use the
+  // tighter list-item gap (a run of similar rows packs closer than distinct sections).
+  float gap = comp.rawNode->Find("gap")
+                ? Metrics::Dp(GetNodeFloat(*comp.rawNode, "gap", 0.0f))
+                : Metrics::ListItemGap();
 
   // Check for template children (data-driven list)
   const TreeNode* childrenNode = comp.rawNode->Find("children");

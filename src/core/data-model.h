@@ -40,6 +40,22 @@ using DataChangeCallback = std::function<void(const std::string& path, const std
 class DataModel
 {
 public:
+  /**
+   * Quote integer literals that overflow int32 (e.g. a 850000000000 market cap) so the
+   * shared dali JSON parser keeps them verbatim instead of mangling them into a 32-bit
+   * field. Apply to a raw message *before* it is first parsed; floats and in-range integers
+   * are untouched, and string contents are never rewritten. Idempotent.
+   */
+  static std::string WidenLargeIntegers(const std::string& json);
+
+  /**
+   * Format a float the way the web (JS) prints a number: the shortest decimal that
+   * round-trips to within one ULP of the value (undoes the dali parser's last-bit rounding,
+   * e.g. 0.45000005 → "0.45"; 12458.32 stays exact). Shared so every float→string path
+   * (GetString, expression args, inline text) formats identically.
+   */
+  static std::string FormatFloatToken(float value);
+
   // --- Data mutation (server → client) ---
 
   /**

@@ -28,13 +28,15 @@ extern const UiColor COLOR_PLACEHOLDER_TEXT = A2uiTheme::Color("Red");          
 extern const UiColor COLOR_ERROR           = A2uiTheme::Color("Red");
 extern const UiColor COLOR_INPUT_BG        = A2uiTheme::Color("Surface");                   // #FFFFFF
 extern const UiColor COLOR_INPUT_BORDER    = A2uiTheme::Color("Outline");                   // #B7B7BB input outline
-extern const UiColor COLOR_CHECK_ON        = A2uiTheme::Color("Primary");                   // checked = primary
+// Composer is monochrome: checked boxes, slider fill/thumb are dark/grey, not the blue
+// Primary. (In the OneUI fallback these read as near-black too, which is acceptable.)
+extern const UiColor COLOR_CHECK_ON        = A2uiTheme::Color("OnSurfaceContainerHighest"); // dark check
 extern const UiColor COLOR_CHECK_OFF       = A2uiTheme::Color("Outline");
 extern const UiColor COLOR_TAB_ACTIVE      = A2uiTheme::Color("OnSurfaceContainerHighest");
 extern const UiColor COLOR_TAB_INACTIVE    = A2uiTheme::Color("SurfaceContainerLow");
 extern const UiColor COLOR_MODAL_OVERLAY(0x00000066);                                       // scrim (not a OneUI token)
-extern const UiColor COLOR_SLIDER_TRACK    = A2uiTheme::Color("OutlineLow");                // #D6D6D8
-extern const UiColor COLOR_SLIDER_FILL     = A2uiTheme::Color("Primary");
-extern const UiColor COLOR_SLIDER_THUMB    = A2uiTheme::Color("Primary");
+extern const UiColor COLOR_SLIDER_TRACK    = A2uiTheme::Color("OutlineLow");                // light grey track
+extern const UiColor COLOR_SLIDER_FILL     = A2uiTheme::Color("OnSurfaceContainer");        // subtle grey fill
+extern const UiColor COLOR_SLIDER_THUMB    = A2uiTheme::Color("OnSurfaceContainerHighest"); // dark thumb
 
 } // namespace A2ui

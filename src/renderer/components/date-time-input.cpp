@@ -11,7 +11,7 @@ View A2uiRenderer::RenderDateTimeInput(const ComponentModel& comp, DataContext& 
   container.SetDirection(FlexDirection::COLUMN);
   container.SetRequestedWidth(MATCH_PARENT);
   container.SetRequestedHeight(WRAP_CONTENT);
-  container.SetMargin(Extents(0, 0, 4, 4));
+  container.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(4)), static_cast<uint16_t>(Metrics::Dp(4))));
 
   const char* labelText = GetNodeString(*comp.rawNode, "label", "Date/Time");
   Label label = Label::New(labelText);
@@ -19,41 +19,62 @@ View A2uiRenderer::RenderDateTimeInput(const ComponentModel& comp, DataContext& 
   label.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));  // OneUIColor.OnSurfaceContainerLow
   label.SetRequestedWidth(MATCH_PARENT);
   label.SetRequestedHeight(WRAP_CONTENT);
-  label.SetMargin(Extents(0, 0, 0, 4));
+  label.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(Metrics::Dp(4))));
   container.Add(label);
 
-  // Same Label-based workaround as TextField (InputField OnChildAdd crash)
+  // Outlined input box (web composer: white box, 1px border, calendar glyph on the right).
   FlexLayout inputBox = FlexLayout::New();
   inputBox.SetDirection(FlexDirection::ROW);
   inputBox.SetAlignItems(FlexAlign::CENTER);
   inputBox.SetRequestedWidth(MATCH_PARENT);
-  inputBox.SetRequestedHeight(44.0f);
+  inputBox.SetRequestedHeight(Metrics::InputHeight());
   inputBox.SetBackgroundColor(COLOR_INPUT_BG);
   inputBox.SetCornerRadius(Metrics::RadiusInput());
-  inputBox.SetPadding(Extents(12, 12, 0, 0));
+  inputBox.SetBorderlineWidth(Metrics::BorderInput());
+  inputBox.SetBorderlineColor(COLOR_INPUT_BORDER);
+  inputBox.SetPadding(Extents(static_cast<uint16_t>(Metrics::Dp(12)), static_cast<uint16_t>(Metrics::Dp(12)), 0, 0));
 
   const TreeNode* valueNode = comp.rawNode->Find("value");
   std::string boundPath = valueNode ? GetBoundPath(valueNode, ctx) : "";
 
-  std::string displayText;
-  if(!boundPath.empty())
-  {
-    displayText = ctx.GetDataModel().GetString(boundPath);
-  }
-  if(displayText.empty()) displayText = "YYYY-MM-DD";
+  // Empty native date inputs render a "mm/dd/yyyy, --:-- --" placeholder on the web; a value
+  // is shown in the same MM/DD/YYYY style.
+  const std::string kPlaceholder = "mm/dd/yyyy, --:-- --";
+  auto formatDateTime = [](const std::string& iso) -> std::string {
+    if(iso.size() < 10) return iso;
+    auto sub = [&](size_t p, size_t n) { return iso.substr(p, n); };
+    std::string out = sub(5, 2) + "/" + sub(8, 2) + "/" + sub(0, 4);
+    if(iso.size() >= 16)
+    {
+      int hh = 0; try { hh = std::stoi(sub(11, 2)); } catch(...) {}
+      int h12 = hh % 12; if(h12 == 0) h12 = 12;
+      out += ", " + std::to_string(h12) + ":" + sub(14, 2) + (hh < 12 ? " AM" : " PM");
+    }
+    return out;
+  };
+  std::string raw = !boundPath.empty() ? ctx.GetDataModel().GetString(boundPath) : "";
+  std::string displayText = raw.empty() ? kPlaceholder : formatDateTime(raw);
 
   Label inputLabel = Label::New(displayText.c_str());
   inputLabel.SetFontSize(Metrics::FontInput());
-  inputLabel.SetTextColor(displayText == "YYYY-MM-DD" ? A2uiTheme::Color("OnSurfaceContainerLow") : COLOR_TEXT_DEFAULT);
-  inputLabel.SetRequestedWidth(MATCH_PARENT);
+  inputLabel.SetTextColor(raw.empty() ? A2uiTheme::Color("OnSurfaceContainerLow") : COLOR_TEXT_DEFAULT);
+  inputLabel.SetRequestedWidth(WRAP_CONTENT);
   inputLabel.SetRequestedHeight(WRAP_CONTENT);
+  inputLabel.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f));
   inputBox.Add(inputLabel);
+
+  Label calIcon = Label::New("\xF0\x9F\x93\x85");  // 📅
+  calIcon.SetFontSize(Metrics::FontInput());
+  calIcon.SetRequestedWidth(WRAP_CONTENT);
+  calIcon.SetRequestedHeight(WRAP_CONTENT);
+  calIcon.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(6)), static_cast<uint16_t>(Metrics::Dp(8)), 0, 0));
+  inputBox.Add(calIcon);
 
   if(!boundPath.empty())
   {
     ctx.GetDataModel().Watch(boundPath,
-      [inputLabel](const std::string&, const std::string& val) mutable {
-        inputLabel.SetText(Dali::String(val.c_str()));
+      [inputLabel, formatDateTime, kPlaceholder](const std::string&, const std::string& val) mutable {
+        inputLabel.SetText(Dali::String((val.empty() ? kPlaceholder : formatDateTime(val)).c_str()));
         inputLabel.SetTextColor(val.empty() ? A2uiTheme::Color("OnSurfaceContainerLow") : COLOR_TEXT_DEFAULT);
       });
   }

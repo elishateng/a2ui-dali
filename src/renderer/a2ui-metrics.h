@@ -25,7 +25,7 @@ namespace A2ui
  */
 namespace Metrics
 {
-// --- Image variant sizes (match the reference renderer ImageVariables) ---
+// --- Image variant sizes (catalog fixed-size variants) ---
 float IconSize();      // 50
 float AvatarSize();    // 100
 float SmallFeature();  // 200
@@ -33,27 +33,32 @@ float MediumFeature(); // 400
 float LargeFeature();  // 800
 float SquareImage();   // 280
 float FeatureHeight(); // 200
+float CardContentWidth(); // 360 (nominal full-width-image sizing width)
+float FullWidthImageMaxAspect(); // 0.82 (web cover-crop height cap, h/w)
+float RowThumbnail();  // 160 (square media tile for an image inside a Row)
 
-// --- Text variant font sizes ---
-float FontH1();        // 28
-float FontH2();        // 22
-float FontH3();        // 18
+// --- Text variant font sizes (web type scale; H1 nudged to 24 for hero numbers) ---
+float FontH1();        // 24
+float FontH2();        // 16
+float FontH3();        // 14
 float FontH4();        // 16
-float FontH5();        // 15
-float FontCaption();   // 13
-float FontBody();      // 16
+float FontH5();        // 14
+float FontCaption();   // 12
+float FontBody();      // 14
+float LineHeight(float fontSize); // web size→line-height pairing
 
 // --- Component font sizes ---
 float FontButton();    // 14
-float FontInput();     // 16
+float FontInput();     // 14
 float FontLabel();     // 12
-float FontError();     // 11
+float FontError();     // 12
 float FontStepper();   // 18 (slider +/-)
-float FontChoice();    // 15 (checkbox / radio option label)
+float FontChoice();    // 14 (checkbox / radio option label)
 
 // --- Corner radii ---
-float RadiusCard();    // 12
-float RadiusInput();   // 6
+float RadiusCard();    // 16
+float RadiusInput();   // 8
+float RadiusImage();   // 16
 float RadiusCheck();   // 4
 float RadiusRadio();   // 10
 float RadiusTab();     // 6
@@ -61,13 +66,20 @@ float RadiusSliderThumb(); // 8
 float RadiusSliderTrack(); // 2
 
 // --- Borderline widths ---
-float BorderCard();    // 1.5
+float BorderCard();    // 1
 float BorderInput();   // 1
 
 // --- Spacing ---
-float PadCard();       // 16
-float ColumnGap();     // 15
-float RowGap();        // 15
+// Inter-element vertical rhythm = ColumnGap + the element's own bottom margin (text blocks
+// add 5-12 via text.cpp; controls add a small block margin). ColumnGap is the base; the
+// margins give text/section breathing room — see the note in a2ui-metrics.cpp.
+float PadCard();       // 28
+float ColumnGap();     // 24 (base inter-element gap for distinct stacked sections)
+float RowGap();        // 16
+float ListItemGap();   // 14 (tighter inter-row spacing for list/template runs)
+
+// --- Form controls ---
+float InputHeight();     // 44 (shared by TextField / DateTimeInput)
 
 // --- Button ---
 float ButtonHeight();    // 40

@@ -25,14 +25,14 @@ View A2uiRenderer::RenderProgressBar(const ComponentModel& comp, DataContext& ct
                      ? parseStr(ctx.GetDataModel().GetString(path), 0.0f)
                      : normalise(progNode ? ResolveFloat(progNode, ctx, 0.0f) : 0.0f);
 
-  constexpr float kBarH = 6.0f;
+  const float kBarH = Metrics::Dp(6);  // dp-scaled like every other component dimension
   FlexLayout track = FlexLayout::New();
   track.SetDirection(FlexDirection::ROW);
   track.SetRequestedWidth(MATCH_PARENT);
   track.SetRequestedHeight(kBarH);
   track.SetBackgroundColor(COLOR_INPUT_BORDER);  // OneUI Outline track
   track.SetCornerRadius(kBarH * 0.5f);
-  track.SetMargin(Extents(0, 0, 6, 6));
+  track.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(6)), static_cast<uint16_t>(Metrics::Dp(6))));
 
   View fill = View::New();
   fill.SetRequestedHeight(kBarH);

@@ -4,6 +4,7 @@
  */
 
 #include "renderer/a2ui-host.h"
+#include "core/data-model.h"
 
 #include <dali/integration-api/debug.h>
 #include <dali-ui-foundation/devel-api/builder/json-parser.h>
@@ -126,8 +127,12 @@ bool A2uiHost::JsonFeedFile(const std::string& path)
   return true;
 }
 
-void A2uiHost::FeedLine(const std::string& line, bool deferRender)
+void A2uiHost::FeedLine(const std::string& rawLine, bool deferRender)
 {
+  // Preserve integers beyond int32 (e.g. a 850000000000 market cap) before the message is
+  // parsed: the shared dali JSON parser would otherwise mangle them into a 32-bit field at
+  // this first parse, before the data model ever sees them.
+  std::string line = DataModel::WidenLargeIntegers(rawLine);
   LineInfo info = PeekLine(line);
 
   // Route to the surface for this id (creating it on demand → multi-surface).

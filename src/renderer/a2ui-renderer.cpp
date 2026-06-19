@@ -92,10 +92,6 @@ void A2uiRenderer::RegisterStandardCatalog()
 
 View A2uiRenderer::Render(SurfaceModel& surface)
 {
-  DALI_LOG_ERROR("[A2UI] === Render() BEGIN surface=%s components=%zu ===\n",
-                 surface.GetSurfaceId().c_str(),
-                 surface.GetComponentsModel().GetCount());
-
   const ComponentModel* root = surface.GetComponentsModel().GetRoot();
   if(!root)
   {
@@ -134,8 +130,6 @@ View A2uiRenderer::Render(SurfaceModel& surface)
 
   mCurrentComponents = nullptr;
   mCurrentCtx = nullptr;
-  DALI_LOG_ERROR("[A2UI] === Render() END surface=%s OK ===\n",
-                 surface.GetSurfaceId().c_str());
   return result;
 }
 
@@ -158,8 +152,6 @@ View A2uiRenderer::RenderComponent(const std::string& id,
   }
 
   const std::string& type = comp->type;
-  DALI_LOG_ERROR("[A2UI] RenderComponent: id=%s type=%s\n",
-                 comp->id.c_str(), type.c_str());
   // Dispatch through the component registry (the catalog, in code). Unknown types fall
   // back to a placeholder, as the A2UI spec requires.
   View result;
@@ -220,7 +212,8 @@ View A2uiRenderer::RenderPlaceholder(const ComponentModel& comp)
 // ========================================================================
 
 void A2uiRenderer::SetupChecks(const ComponentModel& comp, DataContext& ctx,
-                                Label errorLabel, const std::string& boundPath)
+                                Label errorLabel, const std::string& boundPath,
+                                InputField inputField)
 {
   const TreeNode* checksNode = comp.rawNode ? comp.rawNode->Find("checks") : nullptr;
   if(!checksNode || checksNode->GetType() != TreeNode::ARRAY)
@@ -228,33 +221,36 @@ void A2uiRenderer::SetupChecks(const ComponentModel& comp, DataContext& ctx,
     return;
   }
 
-  // Watch the bound path and run checks on every change
-  ctx.GetDataModel().Watch(boundPath,
-    [this, checksNode, errorLabel, ctx](const std::string&, const std::string&) mutable {
-      // Run checks in order, stop at first failure
-      for(auto it = checksNode->CBegin(); it != checksNode->CEnd(); ++it)
+  // One evaluation pass: run checks in order, stop at the first failure. Shared by the
+  // initial (load-time) evaluation and every later data-model change, so an empty required
+  // field shows its error immediately on render — matching the live composer.
+  auto evaluate = [this, checksNode, errorLabel, inputField, ctx]() mutable {
+    for(auto it = checksNode->CBegin(); it != checksNode->CEnd(); ++it)
+    {
+      const TreeNode& check = (*it).second;
+      const TreeNode* conditionNode = check.Find("condition");
+      const TreeNode* messageNode = check.Find("message");
+
+      if(!conditionNode) continue;
+
+      if(mExprParser.Evaluate(*conditionNode, ctx) == "false")
       {
-        const TreeNode& check = (*it).second;
-        const TreeNode* conditionNode = check.Find("condition");
-        const TreeNode* messageNode = check.Find("message");
-
-        if(!conditionNode) continue;
-
-        std::string result = mExprParser.Evaluate(*conditionNode, ctx);
-        if(result == "false")
-        {
-          // Validation failed
-          std::string msg = (messageNode && messageNode->GetType() == TreeNode::STRING)
-                            ? messageNode->GetString() : "Validation failed";
-          errorLabel.SetText(Dali::String(msg.c_str()));
-          errorLabel.SetProperty(Actor::Property::VISIBLE, true);
-          return;
-        }
+        std::string msg = (messageNode && messageNode->GetType() == TreeNode::STRING)
+                          ? messageNode->GetString() : "Validation failed";
+        errorLabel.SetText(Dali::String(msg.c_str()));
+        errorLabel.SetProperty(Actor::Property::VISIBLE, true);
+        if(inputField) inputField.SetBorderlineColor(COLOR_ERROR);  // red invalid outline
+        return;
       }
+    }
+    // All checks passed → restore the normal state
+    errorLabel.SetProperty(Actor::Property::VISIBLE, false);
+    if(inputField) inputField.SetBorderlineColor(COLOR_INPUT_BORDER);
+  };
 
-      // All checks passed
-      errorLabel.SetProperty(Actor::Property::VISIBLE, false);
-    });
+  evaluate();  // evaluate once at load time (web parity: empty required → error now)
+  ctx.GetDataModel().Watch(boundPath,
+    [evaluate](const std::string&, const std::string&) mutable { evaluate(); });
 }
 
 // ========================================================================
@@ -295,9 +291,7 @@ std::string A2uiRenderer::ResolveString(const TreeNode* propNode, const DataCont
   }
   if(propNode->GetType() == TreeNode::FLOAT)
   {
-    std::ostringstream oss;
-    oss << propNode->GetFloat();
-    return oss.str();
+    return DataModel::FormatFloatToken(propNode->GetFloat());  // web-style shortest decimal
   }
 
   return "";

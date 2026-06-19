@@ -19,6 +19,8 @@
 #include <sstream>
 #include <cmath>
 #include <cstdlib>
+#include <cctype>
+#include <ctime>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -184,42 +186,101 @@ ExpressionParser::ExpressionParser()
     if(valStr.empty()) return "";
 
     std::string format = GetArgString(args, "format");
-    if(format.empty()) format = "YYYY-MM-DD";
+    if(format.empty()) format = "yyyy-MM-dd";
 
-    // Parse ISO 8601 date: YYYY-MM-DDTHH:MM:SSZ
-    std::string year, month, day, hour, minute, second;
-    if(valStr.size() >= 10)
-    {
-      year   = valStr.substr(0, 4);
-      month  = valStr.substr(5, 2);
-      day    = valStr.substr(8, 2);
-    }
-    if(valStr.size() >= 19)
-    {
-      hour   = valStr.substr(11, 2);
-      minute = valStr.substr(14, 2);
-      second = valStr.substr(17, 2);
-    }
-
-    // Simple pattern replacement
-    std::string result = format;
-    auto replace = [&result](const std::string& from, const std::string& to) {
-      size_t pos = 0;
-      while((pos = result.find(from, pos)) != std::string::npos)
-      {
-        result.replace(pos, from.size(), to);
-        pos += to.size();
-      }
+    // Parse ISO 8601 (YYYY-MM-DD[THH:MM[:SS]][Z|±HH:MM]) into integer fields.
+    auto toi = [&valStr](size_t pos, size_t n) -> int {
+      if(pos + n > valStr.size()) return 0;
+      try { return std::stoi(valStr.substr(pos, n)); } catch(...) { return 0; }
     };
+    int year = 0, month = 1, day = 1, hour = 0, minute = 0, second = 0;
+    if(valStr.size() >= 10) { year = toi(0, 4); month = toi(5, 2); day = toi(8, 2); }
+    if(valStr.size() >= 16) { hour = toi(11, 2); minute = toi(14, 2); }
+    if(valStr.size() >= 19) { second = toi(17, 2); }
 
-    replace("YYYY", year);
-    replace("MM", month);
-    replace("DD", day);
-    replace("HH", hour);
-    replace("mm", minute);
-    replace("ss", second);
+    // Timezone: the web's date-fns formats the instant in the *local* zone. A trailing 'Z'
+    // (or ±HH:MM offset) marks the value as UTC, so convert it to local time the same way
+    // (10:15Z → 19:15 in a UTC+9 host) instead of printing the raw UTC clock. A value with
+    // no zone marker is already local (naive) and is used as-is.
+    bool   hasZ = (valStr.find('Z') != std::string::npos || valStr.find('z') != std::string::npos);
+    int    offMin = 0;  // explicit ±HH:MM offset in minutes, if any
+    {
+      size_t tpos = valStr.find('T');
+      size_t sgn  = (tpos != std::string::npos) ? valStr.find_first_of("+-", tpos + 1) : std::string::npos;
+      if(sgn != std::string::npos && sgn + 6 <= valStr.size() && valStr[sgn + 3] == ':')
+      {
+        int oh = 0, om = 0;
+        try { oh = std::stoi(valStr.substr(sgn + 1, 2)); om = std::stoi(valStr.substr(sgn + 4, 2)); } catch(...) {}
+        offMin = (oh * 60 + om) * (valStr[sgn] == '-' ? -1 : 1);
+        hasZ = true;
+      }
+    }
+    if(hasZ && valStr.size() >= 16)
+    {
+      std::tm utc{};
+      utc.tm_year = year - 1900; utc.tm_mon = month - 1; utc.tm_mday = day;
+      utc.tm_hour = hour; utc.tm_min = minute - offMin; utc.tm_sec = second;
+      std::time_t epoch = timegm(&utc);           // interpret fields as UTC → epoch
+      std::tm local{};
+      localtime_r(&epoch, &local);                // → host-local broken-down time
+      year = local.tm_year + 1900; month = local.tm_mon + 1; day = local.tm_mday;
+      hour = local.tm_hour; minute = local.tm_min; second = local.tm_sec;
+    }
+    if(month < 1) month = 1;
+    if(month > 12) month = 12;
 
-    return result;
+    // English names + locale-independent weekday (Sakamoto), to match the web (date-fns).
+    static const char* kWeekFull[7]  = {"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
+    static const char* kWeekShort[7] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+    static const char* kMonFull[12]  = {"January","February","March","April","May","June",
+                                        "July","August","September","October","November","December"};
+    static const char* kMonShort[12] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+    static const int   kSk[12]       = {0,3,2,5,0,3,5,1,4,6,2,4};
+    int wy = year, wm = month;
+    if(wm < 3) wy -= 1;
+    int wday = ((wy + wy/4 - wy/100 + wy/400 + kSk[wm-1] + day) % 7 + 7) % 7;
+
+    auto pad2 = [](int v) { std::string s = std::to_string(v); return s.size() < 2 ? "0" + s : s; };
+    int h12 = hour % 12; if(h12 == 0) h12 = 12;
+
+    // Walk the format left→right, consuming whole token runs (EEEE, MMM, dd, ...) and
+    // 'quoted literals'. Longest-run-wins is implicit: a run of N identical letters is one token.
+    std::string out;
+    for(size_t i = 0; i < format.size();)
+    {
+      char c = format[i];
+      if(c == '\'')  // quoted literal: copy verbatim until the next quote
+      {
+        ++i;
+        while(i < format.size() && format[i] != '\'') out += format[i++];
+        if(i < format.size()) ++i;
+        continue;
+      }
+      if(!std::isalpha(static_cast<unsigned char>(c))) { out += c; ++i; continue; }
+      size_t j = i; while(j < format.size() && format[j] == c) ++j;
+      int len = static_cast<int>(j - i);
+      switch(c)
+      {
+        case 'E': out += (len >= 4) ? kWeekFull[wday] : kWeekShort[wday]; break;
+        case 'M':
+          if(len >= 4)      out += kMonFull[month - 1];
+          else if(len == 3) out += kMonShort[month - 1];
+          else if(len == 2) out += pad2(month);
+          else              out += std::to_string(month);
+          break;
+        case 'd': out += (len >= 2) ? pad2(day) : std::to_string(day); break;
+        case 'y':
+        case 'Y': out += (len <= 2) ? pad2(year % 100) : std::to_string(year); break;
+        case 'h': out += (len >= 2) ? pad2(h12) : std::to_string(h12); break;
+        case 'H': out += (len >= 2) ? pad2(hour) : std::to_string(hour); break;
+        case 'm': out += (len >= 2) ? pad2(minute) : std::to_string(minute); break;
+        case 's': out += (len >= 2) ? pad2(second) : std::to_string(second); break;
+        case 'a': out += (hour < 12) ? "AM" : "PM"; break;
+        default: break;  // unknown token → omit (date-fns-like)
+      }
+      i = j;
+    }
+    return out;
   });
 
   RegisterFunction("pluralize", [](const TreeNode& args, const DataContext& ctx) -> std::string {
@@ -245,7 +306,6 @@ ExpressionParser::ExpressionParser()
       DALI_LOG_ERROR("[A2UI] openUrl: blocked non-http URL: %s\n", url.c_str());
       return "false";
     }
-    DALI_LOG_ERROR("[A2UI] openUrl: %s\n", url.c_str());
     // On Tizen, use app_control to open browser.
     // For desktop, use fork+exec to avoid command injection.
 #ifdef __linux__
@@ -389,9 +449,7 @@ std::string ExpressionParser::ResolveArg(const TreeNode& args, const char* key,
   }
   if(node->GetType() == TreeNode::FLOAT)
   {
-    std::ostringstream oss;
-    oss << node->GetFloat();
-    return oss.str();
+    return DataModel::FormatFloatToken(node->GetFloat());  // web-style shortest decimal
   }
   if(node->GetType() == TreeNode::BOOLEAN)
   {

@@ -7,28 +7,49 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
 {
   if(!comp.rawNode) return View::New();
 
+  // displayStyle:"chips" → a horizontal row of selectable pills (web segmented look);
+  // otherwise a vertical radio list. Both single-select (mutuallyExclusive).
+  bool chips = (strcmp(GetNodeString(*comp.rawNode, "displayStyle", ""), "chips") == 0);
+
   FlexLayout container = FlexLayout::New();
-  container.SetDirection(FlexDirection::COLUMN);
+  container.SetDirection(chips ? FlexDirection::ROW : FlexDirection::COLUMN);
   container.SetRequestedWidth(MATCH_PARENT);
   container.SetRequestedHeight(WRAP_CONTENT);
-  container.SetMargin(Extents(0, 0, 4, 4));
+  container.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(4)), static_cast<uint16_t>(Metrics::Dp(4))));
+  if(chips) container.SetAlignItems(FlexAlign::CENTER);
 
-  // Label (optional)
+  // Label (optional) — a vertical list puts it above; chips have none (the label is a
+  // sibling Text in these layouts).
   const char* labelText = GetNodeString(*comp.rawNode, "label", "");
-  if(labelText[0] != '\0')
+  if(!chips && labelText[0] != '\0')
   {
     Label label = Label::New(labelText);
     label.SetFontSize(Metrics::FontLabel());
-    label.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));  // OneUIColor.OnSurfaceContainerLow
+    label.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));
     label.SetRequestedWidth(MATCH_PARENT);
     label.SetRequestedHeight(WRAP_CONTENT);
-    label.SetMargin(Extents(0, 0, 0, 4));
+    label.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(Metrics::Dp(4))));
     container.Add(label);
   }
 
   const TreeNode* valueNode = comp.rawNode->Find("value");
   std::string boundPath = valueNode ? GetBoundPath(valueNode, ctx) : "";
-  std::string currentValue = !boundPath.empty() ? ctx.GetDataModel().GetString(boundPath) : "";
+
+  // The selected value may be a plain string OR an array (mutuallyExclusive pickers store
+  // ["annual"]). isSelected resolves the live bound node and tests membership either way, so
+  // it works for both the initial paint and the reactive watch.
+  DataContext selCtx = ctx;
+  auto isSelected = [selCtx, boundPath](const std::string& v) mutable -> bool {
+    if(boundPath.empty()) return false;
+    const TreeNode* n = selCtx.GetDataModel().ResolvePath(boundPath);
+    if(n && n->GetType() == TreeNode::ARRAY)
+    {
+      for(auto it = n->CBegin(); it != n->CEnd(); ++it)
+        if((*it).second.GetType() == TreeNode::STRING && (*it).second.GetString() == v) return true;
+      return false;
+    }
+    return selCtx.GetDataModel().GetString(boundPath) == v;
+  };
 
   const TreeNode* optionsNode = comp.rawNode->Find("options");
   if(!optionsNode || optionsNode->GetType() != TreeNode::ARRAY)
@@ -36,71 +57,114 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
     return container;
   }
 
-  // Collect option views for reactive updates
-  std::vector<std::pair<View, std::string>> optionIcons;
+  // (view, value, label) per option, for reactive re-styling on selection change.
+  struct Opt { View row; Label lbl; View icon; std::string value; };
+  auto opts = std::make_shared<std::vector<Opt>>();
 
+  int index = 0;
   for(auto it = optionsNode->CBegin(); it != optionsNode->CEnd(); ++it)
   {
     const TreeNode& optNode = (*it).second;
     const TreeNode* optLabelNode = optNode.Find("label");
     const TreeNode* optValueNode = optNode.Find("value");
-
     std::string optLabel = (optLabelNode && optLabelNode->GetType() == TreeNode::STRING)
                            ? optLabelNode->GetString() : "";
     std::string optValue = (optValueNode && optValueNode->GetType() == TreeNode::STRING)
                            ? optValueNode->GetString() : "";
+    bool selected = isSelected(optValue);
 
     FlexLayout optRow = FlexLayout::New();
     optRow.SetDirection(FlexDirection::ROW);
     optRow.SetAlignItems(FlexAlign::CENTER);
-    optRow.SetRequestedWidth(MATCH_PARENT);
     optRow.SetRequestedHeight(WRAP_CONTENT);
-    optRow.SetPadding(Extents(8, 8, 10, 10));
 
-    // Radio circle
-    View radioIcon = View::New();
-    radioIcon.SetRequestedWidth(20.0f);
-    radioIcon.SetRequestedHeight(20.0f);
-    radioIcon.SetCornerRadius(Metrics::RadiusRadio());
-    bool selected = (optValue == currentValue);
-    radioIcon.SetBackgroundColor(selected ? COLOR_CHECK_ON : COLOR_CHECK_OFF);
-    optRow.Add(radioIcon);
-
-    optionIcons.push_back({radioIcon, optValue});
-
-    // Option label
     Label optLbl = Label::New(optLabel.c_str());
-    optLbl.SetFontSize(Metrics::FontChoice());
-    optLbl.SetTextColor(COLOR_TEXT_DEFAULT);
     optLbl.SetRequestedWidth(WRAP_CONTENT);
-    optLbl.SetRequestedHeight(WRAP_CONTENT);
-    optLbl.SetMargin(Extents(8, 0, 0, 0));
-    optRow.Add(optLbl);
+    // Reserve the line height explicitly — a WRAP_CONTENT label inside a sized pill/row can
+    // measure height 0 (its width resolves only after layout) and vanish.
+    optLbl.SetRequestedHeight(Metrics::LineHeight(Metrics::FontChoice()));
+    View radioIcon;  // only the list style has a radio dot
 
-    // Click handler
+    if(chips)
+    {
+      // Pill chip: selected = dark fill + white label, unselected = card-coloured + dark
+      // label. Sized to content with comfortable padding; pill radius. The label needs an
+      // explicit width — a WRAP_CONTENT label inside a justify-centre pill measures width 0
+      // (its size resolves only after layout) and the pill collapses to just its padding.
+      optRow.SetJustifyContent(FlexJustify::CENTER);
+      optRow.SetRequestedWidth(WRAP_CONTENT);
+      float lblW = static_cast<float>(optLabel.size()) * Metrics::FontChoice() * 0.62f + Metrics::Dp(4);
+      optLbl.SetRequestedWidth(lblW);
+      uint16_t px = static_cast<uint16_t>(Metrics::Dp(14));
+      uint16_t py = static_cast<uint16_t>(Metrics::Dp(7));
+      optRow.SetPadding(Extents(px, px, py, py));
+      optRow.SetCornerRadius(Metrics::Dp(16));
+      // selected = dark fill + white label; unselected = card-coloured (blends into the
+      // white card, like the web's plain-text chip) + dark label. (DALi treats 0x00000000
+      // as opaque black, so the unselected fill must be the card colour, not "transparent".)
+      optRow.SetBackgroundColor(selected ? COLOR_TEXT_DEFAULT : COLOR_CARD_BG);
+      if(index > 0) optRow.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(8)), 0, 0, 0));
+      optLbl.SetFontSize(Metrics::FontChoice());
+      optLbl.SetTextColor(selected ? COLOR_CARD_BG : COLOR_TEXT_DEFAULT);
+      optRow.Add(optLbl);
+    }
+    else
+    {
+      optRow.SetRequestedWidth(MATCH_PARENT);
+      optRow.SetPadding(Extents(static_cast<uint16_t>(Metrics::Dp(8)), static_cast<uint16_t>(Metrics::Dp(8)),
+                                static_cast<uint16_t>(Metrics::Dp(6)), static_cast<uint16_t>(Metrics::Dp(6))));
+      radioIcon = View::New();
+      radioIcon.SetRequestedWidth(Metrics::Dp(20));
+      radioIcon.SetRequestedHeight(Metrics::Dp(20));
+      radioIcon.SetCornerRadius(Metrics::RadiusRadio());
+      radioIcon.SetBorderlineWidth(Metrics::BorderInput());
+      radioIcon.SetBorderlineColor(A2uiTheme::Color("Outline"));
+      radioIcon.SetBackgroundColor(selected ? COLOR_CHECK_ON : COLOR_CHECK_OFF);
+      optRow.Add(radioIcon);
+      optLbl.SetFontSize(Metrics::FontChoice());
+      optLbl.SetTextColor(COLOR_TEXT_DEFAULT);
+      optLbl.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(8)), 0, 0, 0));
+      optRow.Add(optLbl);
+    }
+
     if(!boundPath.empty())
     {
-      optRow.AsInteractive([this, optValue, boundPath, ctx](InteractiveTrait& trait) mutable {
+      // mutuallyExclusive pickers store the selection as a one-element array; preserve that
+      // shape so the value round-trips the way the server sent it.
+      bool arrayShape = chips;
+      optRow.AsInteractive([this, optValue, boundPath, ctx, arrayShape](InteractiveTrait& trait) mutable {
         trait.ClickedSignal().Connect(this,
-          [optValue, boundPath, ctx](View, const InputEvent&) mutable -> bool {
-            ctx.GetDataModel().SetValue(boundPath, optValue);
+          [optValue, boundPath, ctx, arrayShape](View, const InputEvent&) mutable -> bool {
+            if(arrayShape) ctx.GetDataModel().SetData(boundPath, "[\"" + optValue + "\"]");
+            else           ctx.GetDataModel().SetValue(boundPath, optValue);
             return true;
           });
       });
     }
 
+    opts->push_back({optRow, optLbl, radioIcon, optValue});
     container.Add(optRow);
+    index++;
   }
 
-  // Watch for value changes → update all radio icons
+  // Watch for value changes → restyle every option's selected state (re-resolves the bound
+  // node via isSelected so array-shaped selections restyle correctly too).
   if(!boundPath.empty())
   {
     ctx.GetDataModel().Watch(boundPath,
-      [optionIcons](const std::string&, const std::string& val) mutable {
-        for(auto& pair : optionIcons)
+      [opts, chips, isSelected](const std::string&, const std::string&) mutable {
+        for(auto& o : *opts)
         {
-          bool selected = (pair.second == val);
-          pair.first.SetBackgroundColor(selected ? COLOR_CHECK_ON : COLOR_CHECK_OFF);
+          bool sel = isSelected(o.value);
+          if(chips)
+          {
+            o.row.SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : COLOR_CARD_BG);
+            o.lbl.SetTextColor(sel ? COLOR_CARD_BG : COLOR_TEXT_DEFAULT);
+          }
+          else if(o.icon)
+          {
+            o.icon.SetBackgroundColor(sel ? COLOR_CHECK_ON : COLOR_CHECK_OFF);
+          }
         }
       });
   }

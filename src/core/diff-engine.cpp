@@ -14,7 +14,6 @@
  */
 
 #include "diff-engine.h"
-#include <dali/integration-api/debug.h>
 #include <functional>
 #include <sstream>
 
@@ -148,10 +147,6 @@ ComponentDiff DiffEngine::ComputeDiff(
       }
     }
   }
-
-  DALI_LOG_ERROR("[A2UI] DiffEngine: +%zu added, ~%zu modified, -%zu removed, =%zu unchanged\n",
-                 diff.added.size(), diff.modified.size(),
-                 diff.removed.size(), diff.unchanged.size());
 
   return diff;
 }

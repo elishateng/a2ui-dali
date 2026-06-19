@@ -14,7 +14,6 @@
  */
 
 #include "action-dispatcher.h"
-#include <dali/integration-api/debug.h>
 #include <sstream>
 #include <cstring>
 
@@ -86,15 +85,6 @@ void ActionDispatcher::Dispatch(const TreeNode& actionNode,
   oss << "}}";
 
   std::string actionJson = oss.str();
-
-  DALI_LOG_ERROR("[A2UI] Action dispatched: %s\n", actionJson.c_str());
-
-  // Include data model if sendDataModel is enabled
-  if(mSendDataModel)
-  {
-    std::string dataJson = ctx.GetDataModel().Serialize();
-    DALI_LOG_ERROR("[A2UI] DataModel snapshot: %s\n", dataJson.c_str());
-  }
 
   if(mSendCallback)
   {

@@ -12,15 +12,16 @@ View A2uiRenderer::RenderDivider(const ComponentModel& comp)
 
   if(strcmp(axis, "vertical") == 0)
   {
-    divider.SetRequestedWidth(1.0f);
+    divider.SetRequestedWidth(Metrics::BorderInput());
     divider.SetRequestedHeight(MATCH_PARENT);
-    divider.SetMargin(Extents(4, 4, 0, 0));
+    divider.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(8)), static_cast<uint16_t>(Metrics::Dp(8)), 0, 0));
   }
   else
   {
+    // The web sets a horizontal rule off with generous space above and below.
     divider.SetRequestedWidth(MATCH_PARENT);
-    divider.SetRequestedHeight(1.0f);
-    divider.SetMargin(Extents(0, 0, 8, 8));
+    divider.SetRequestedHeight(Metrics::BorderInput());
+    divider.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(22)), static_cast<uint16_t>(Metrics::Dp(22))));
   }
 
   return divider;

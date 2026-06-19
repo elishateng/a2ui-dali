@@ -14,7 +14,6 @@
  */
 
 #include "template-cache.h"
-#include <dali/integration-api/debug.h>
 #include <algorithm>
 #include <sstream>
 #include <cctype>
@@ -104,9 +103,6 @@ std::string TemplateCache::Get(const std::string& userMessage)
 
   mHitCount++;
 
-  DALI_LOG_ERROR("[A2UI] TemplateCache: HIT (key='%s', hits=%d)\n",
-                 key.substr(0, 40).c_str(), it->second.hitCount);
-
   return it->second.jsonl;
 }
 
@@ -145,9 +141,6 @@ void TemplateCache::Put(const std::string& userMessage, const std::string& jsonl
   mCache[key] = std::move(entry);
   mLruOrder.push_front(key);
   mLruMap[key] = mLruOrder.begin();
-
-  DALI_LOG_ERROR("[A2UI] TemplateCache: STORE (key='%s', size=%zu/%zu)\n",
-                 key.substr(0, 40).c_str(), mCache.size(), mMaxSize);
 }
 
 bool TemplateCache::Has(const std::string& userMessage) const

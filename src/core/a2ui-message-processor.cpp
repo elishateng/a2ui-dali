@@ -286,8 +286,6 @@ bool A2uiMessageProcessor::OnCallFunction(const TreeNode& msgBody, SurfaceModel&
     DataContext ctx(surface.GetDataModel());
     // msgBody itself contains "call" and "args" — pass it directly to Evaluate
     result = mExprParser->Evaluate(msgBody, ctx);
-    DALI_LOG_ERROR("[A2UI] callFunction '%s' → result: '%s'\n",
-                   functionCallId.c_str(), result.c_str());
   }
   else
   {

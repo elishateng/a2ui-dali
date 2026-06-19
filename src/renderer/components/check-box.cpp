@@ -12,19 +12,22 @@ View A2uiRenderer::RenderCheckBox(const ComponentModel& comp, DataContext& ctx)
   row.SetAlignItems(FlexAlign::CENTER);
   row.SetRequestedWidth(MATCH_PARENT);
   row.SetRequestedHeight(WRAP_CONTENT);
-  row.SetMargin(Extents(0, 0, 4, 4));
+  row.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(4)), static_cast<uint16_t>(Metrics::Dp(4))));
 
-  // Check icon
+  // Check box: an outlined white square (web composer) that fills with the accent colour
+  // when checked — the border keeps the unchecked box visible instead of a faint fill.
   View checkIcon = View::New();
-  checkIcon.SetRequestedWidth(24.0f);
-  checkIcon.SetRequestedHeight(24.0f);
+  checkIcon.SetRequestedWidth(Metrics::Dp(20));
+  checkIcon.SetRequestedHeight(Metrics::Dp(20));
   checkIcon.SetCornerRadius(Metrics::RadiusCheck());
+  checkIcon.SetBorderlineWidth(Metrics::BorderInput());
+  checkIcon.SetBorderlineColor(A2uiTheme::Color("Outline"));
 
   const TreeNode* valueNode = comp.rawNode->Find("value");
   std::string boundPath = valueNode ? GetBoundPath(valueNode, ctx) : "";
 
   bool checked = !boundPath.empty() ? ctx.GetDataModel().GetBool(boundPath, false) : false;
-  checkIcon.SetBackgroundColor(checked ? COLOR_CHECK_ON : COLOR_CHECK_OFF);
+  checkIcon.SetBackgroundColor(checked ? COLOR_CHECK_ON : COLOR_CARD_BG);
 
   // Label
   const char* labelText = GetNodeString(*comp.rawNode, "label", "");
@@ -33,7 +36,7 @@ View A2uiRenderer::RenderCheckBox(const ComponentModel& comp, DataContext& ctx)
   label.SetTextColor(COLOR_TEXT_DEFAULT);
   label.SetRequestedWidth(WRAP_CONTENT);
   label.SetRequestedHeight(WRAP_CONTENT);
-  label.SetMargin(Extents(8, 0, 0, 0));
+  label.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(8)), 0, 0, 0));
 
   row.Add(checkIcon);
   row.Add(label);
@@ -54,7 +57,7 @@ View A2uiRenderer::RenderCheckBox(const ComponentModel& comp, DataContext& ctx)
     ctx.GetDataModel().Watch(boundPath,
       [checkIcon](const std::string&, const std::string& val) mutable {
         bool on = (val == "true");
-        checkIcon.SetBackgroundColor(on ? COLOR_CHECK_ON : COLOR_CHECK_OFF);
+        checkIcon.SetBackgroundColor(on ? COLOR_CHECK_ON : COLOR_CARD_BG);
       });
   }
 
