@@ -53,6 +53,34 @@ cmake -S . -B build
 cmake --build build -j$(nproc)
 ```
 
+#### For Tizen (gbs / RPM)
+
+For a Tizen target `a2ui-dali` builds as an RPM with
+[gbs](https://docs.tizen.org/platform/reference/gbs/gbs-overview/); the packaging lives in
+`packaging/`. It depends on `dali2-ui-foundation` / `dali2-ui-components` (the
+[dali-ui](https://github.com/dalihub/dali-ui) foundation layer), which are **not** in the
+standard Tizen image, so build and install those first.
+
+> **Match the device's DALi version.** Point `~/.gbs.conf` at the snapshot whose `dali2`
+> version matches your target device (e.g. the emulator's image snapshot); the rolling
+> `latest` may be ahead and ABI-incompatible. Check out the `dali-ui` commit that
+> corresponds to that DALi version — `a2ui-dali` tracks the `dali-ui` API, so its sources
+> are kept in step with `dali-ui`, not the other way around.
+
+```bash
+# 1) dali-ui  -> dali2-ui-foundation / dali2-ui-components (+ -devel)  (in the dali-ui checkout)
+gbs build -A <arch>
+# 2) a2ui-dali  (resolves dali-ui -devel from the local gbs repo)      (in this repo)
+gbs build -A <arch> --include-all
+
+# 3) install on device (dali-ui runtime + a2ui-dali) and run the gallery
+sdb root on && sdb push *.rpm /tmp && sdb shell "rpm -Uvh --force /tmp/*.rpm"
+sdb shell "cd /usr/share/a2ui-dali && a2ui-gallery-demo screens"
+```
+
+The RPM installs the example binaries to `/usr/bin` and their resources to
+`/usr/share/a2ui-dali/`; launch from that data dir so the relative `res/` path resolves.
+
 ### 2. Run the examples
 
 Render a single A2UI stream:
