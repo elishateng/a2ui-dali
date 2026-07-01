@@ -89,9 +89,14 @@ TARGET_LINK_LIBRARIES(a2ui-dali PUBLIC
   pthread
 )
 
-TARGET_LINK_DIRECTORIES(a2ui-dali PUBLIC
-  $ENV{DESKTOP_PREFIX}/lib
-)
+# Desktop (Ubuntu) build links against DALi installed under $DESKTOP_PREFIX.
+# Under gbs/RPM the deps are resolved via pkg-config from the system prefix,
+# and DESKTOP_PREFIX is unset, so only add this link path when it exists.
+IF(DEFINED ENV{DESKTOP_PREFIX})
+  TARGET_LINK_DIRECTORIES(a2ui-dali PUBLIC
+    $ENV{DESKTOP_PREFIX}/lib
+  )
+ENDIF()
 
 # ============================================================
 # Install: library + public headers + pkg-config (distributable)
@@ -134,9 +139,11 @@ TARGET_LINK_LIBRARIES(${TEST_NAME}
   pthread
 )
 
-TARGET_LINK_DIRECTORIES(${TEST_NAME} PRIVATE
-  $ENV{DESKTOP_PREFIX}/lib
-)
+IF(DEFINED ENV{DESKTOP_PREFIX})
+  TARGET_LINK_DIRECTORIES(${TEST_NAME} PRIVATE
+    $ENV{DESKTOP_PREFIX}/lib
+  )
+ENDIF()
 
 SET_TARGET_PROPERTIES(${TEST_NAME} PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
@@ -171,3 +178,25 @@ TARGET_LINK_LIBRARIES(a2ui-custom-component a2ui-dali)
 SET_TARGET_PROPERTIES(a2ui-custom-component PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
 )
+
+# ============================================================
+# Install: example binaries + runtime data (Tizen/gbs packaging)
+# ============================================================
+# The renderer resolves images via a relative "res/" path
+# (A2uiHost::GetRenderer().SetImageDir("res/")), so on target the examples must
+# be launched with the installed data dir as the working directory, e.g.:
+#   cd ${CMAKE_INSTALL_DATADIR}/a2ui-dali && a2ui-gallery-demo screens
+OPTION(A2UI_INSTALL_EXAMPLES "Install example binaries and runtime resources" ON)
+IF(A2UI_INSTALL_EXAMPLES)
+  INSTALL(TARGETS a2ui-basic-renderer a2ui-gallery-demo a2ui-custom-component
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+  INSTALL(DIRECTORY res/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/a2ui-dali/res)
+  INSTALL(DIRECTORY examples/gallery-demo/screens/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/a2ui-dali/screens)
+  INSTALL(DIRECTORY examples/samples/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/a2ui-dali/samples)
+  INSTALL(FILES examples/basic-renderer/sample.jsonl
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/a2ui-dali/samples)
+ENDIF()
