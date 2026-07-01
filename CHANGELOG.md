@@ -5,6 +5,44 @@ All notable changes to **a2ui-dali** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2026-07-01
+
+Adds a Tizen build path and brings the desktop render output into parity with the A2UI
+web composer. No public API changes.
+
+### Added
+
+- **Tizen / gbs build.** RPM packaging under `packaging/` (`a2ui-dali.spec`,
+  `a2ui-dali.manifest`) builds a2ui-dali for Tizen with
+  [gbs](https://docs.tizen.org/platform/reference/gbs/gbs-overview/), alongside the
+  existing desktop CMake build. The package installs the example binaries and their
+  runtime resources (`res/`, gallery `screens/`, `samples/`) under
+  `/usr/share/a2ui-dali`; launch the examples from that data dir so the relative `res/`
+  path resolves. See the README for pointing gbs at a DALi snapshot that matches the
+  target device.
+
+### Changed
+
+- **Rendering parity with the A2UI web composer** — web-matched design tokens (spacing,
+  radii, colours, font sizes) and full-width images so cards lay out like the reference
+  composer.
+- `CMakeLists.txt` applies the `$DESKTOP_PREFIX` link path only when it is set, so a
+  single build script serves both the desktop (`dali-env`) and the gbs/RPM builds.
+
+### Fixed
+
+- Number and date value formatting in the `${…}` expression evaluator.
+- Card bottom padding: DALi `FlexLayout` drops the bottom inset of a `WRAP_CONTENT`
+  column, leaving every card one padding short — an explicit bottom spacer restores the
+  symmetric inset.
+
+### Compatibility
+
+- Verified on a **Tizen 11 emulator (DALi 2.5.25)** via gbs and on the desktop `dali-env`
+  build. a2ui-dali tracks the `dali-ui` `devel` API, so check out the `dali-ui` revision
+  that matches your target's DALi version (this release was built against `dali-ui`
+  `12b0de06`, DALi 2.5.25). Source `setenv` from your `dali-env` before the desktop build.
+
 ## [0.9.0] — 2026-06-12
 
 Initial public release of **a2ui-dali**, a native C++/[DALi](https://github.com/dalihub)
@@ -98,4 +136,5 @@ before 1.0.
   slots). `dali-ui` UI/visual APIs change frequently; track a `dali-ui` revision from the
   same period. Source `setenv` from your `dali-env` before building.
 
+[0.10.0]: https://github.com/dalihub/a2ui-dali/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dalihub/a2ui-dali/releases/tag/v0.9.0
