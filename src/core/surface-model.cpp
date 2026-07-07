@@ -28,12 +28,12 @@ void SurfaceModel::Create(const std::string& surfaceId, const std::string& catal
   mParsers.clear();
 }
 
-void SurfaceModel::UpdateComponents(const Dali::Ui::TreeNode& componentsArray)
+void SurfaceModel::UpdateComponents(const Dali::Ui::Integration::TreeNode& componentsArray)
 {
   mComponents.AddComponents(componentsArray);
 }
 
-void SurfaceModel::UpdateDataModel(const std::string& path, const Dali::Ui::TreeNode& value)
+void SurfaceModel::UpdateDataModel(const std::string& path, const Dali::Ui::Integration::TreeNode& value)
 {
   mDataModel.SetDataFromNode(path, value);
 }
@@ -53,7 +53,7 @@ void SurfaceModel::Reset()
   mParsers.clear();
 }
 
-void SurfaceModel::KeepParser(Dali::Ui::JsonParser parser)
+void SurfaceModel::KeepParser(Dali::Ui::Integration::JsonParser parser)
 {
   mParsers.push_back(parser);
 }

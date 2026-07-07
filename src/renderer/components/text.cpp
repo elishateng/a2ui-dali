@@ -49,11 +49,16 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
   const char* variant = GetNodeString(*comp.rawNode, "variant", "body");
   float fontSize = VariantToFontSize(variant);
 
+  // A value with NO breakable whitespace (a currency/number cell "$43,500.25", a single word)
+  // must NEVER wrap — the web renders these nowrap on one line. Wrapping such a token (e.g. in
+  // a narrow weighted grid column) split "$43,500.25" across two lines and inflated the row.
+  bool wrappable = (text.find(' ') != std::string::npos);
+
   Label label = Label::New(text.c_str());
   label.SetFontSize(fontSize);
   label.SetRequestedWidth(MATCH_PARENT);
   label.SetTextColor(COLOR_TEXT_DEFAULT);
-  label.SetMultiLine(true);
+  label.SetMultiLine(wrappable);
   label.SetLineWrapMode(Text::LineWrapMode::WORD);
 
   // DALi Label inside a flex-grown parent sometimes measures height=0 when the parent's
@@ -64,9 +69,19 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
   float lineH = Metrics::LineHeight(fontSize);
   if(!text.empty())
   {
-    int charsPerLine = static_cast<int>(Metrics::CardContentWidth() / (fontSize * 0.52f));
-    if(charsPerLine < 8) charsPerLine = 8;
-    int estLines = static_cast<int>((text.size() + charsPerLine - 1) / charsPerLine);
+    // Available width: the narrow-column budget if we're inside a Row's column, else the full
+    // card content width. 0.58 (avg glyph advance / font size) is deliberately a touch wide so
+    // the line count rounds UP rather than down — under-counting clips the wrap (the visible
+    // bug), over-counting only adds a little slack, and the cards currently run short anyway.
+    float availW = (mTextWidthBudget > 0.0f) ? mTextWidthBudget : Metrics::CardContentWidth();
+    // Safety margin: the budget is an ESTIMATE, and a Row's leading image/sibling can overshoot
+    // its own width estimate, leaving the text column a touch narrower than `availW` at render
+    // time. Shave the budget ~8% so a boundary-length name (h4 "Wireless Headphones Pro") reserves
+    // the 2 lines it actually wraps to instead of 1 and getting ellipsized. Only adds height slack.
+    availW *= 0.92f;
+    int charsPerLine = static_cast<int>(availW / (fontSize * 0.58f));
+    if(charsPerLine < 6) charsPerLine = 6;
+    int estLines = wrappable ? static_cast<int>((text.size() + charsPerLine - 1) / charsPerLine) : 1;
     if(estLines < 1) estLines = 1;
     if(estLines > 20) estLines = 20;
     label.SetRequestedHeight(lineH * estLines);
@@ -105,10 +120,16 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
     else if(strcmp(fontWeight, "medium") == 0)
       label.SetFontWeight(Text::FontWeight::MEDIUM);
   }
-  else if(strcmp(variant, "h1") == 0 || strcmp(variant, "h2") == 0 || strcmp(variant, "h3") == 0 ||
-          strcmp(variant, "h4") == 0)
+  else if(strcmp(variant, "h1") == 0 || strcmp(variant, "h2") == 0 || strcmp(variant, "h3") == 0)
   {
-    // Headings default to semi-bold (600)
+    // Headings are SEMI-BOLD (600). Frame-aligned comparison showed a full BOLD (700) heading
+    // reads clearly heavier than the web's title weight across many cards (Purchase License,
+    // Today's Steps, Product Launch Meeting…); 600 matches.
+    label.SetFontWeight(Text::FontWeight::SEMI_BOLD);
+  }
+  else if(strcmp(variant, "h4") == 0)
+  {
+    // h4 (body-large) is a sub-heading — semi-bold, lighter than the h1-h3 titles.
     label.SetFontWeight(Text::FontWeight::SEMI_BOLD);
   }
 
@@ -132,7 +153,7 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
       float thickness = GetNodeFloat(*underlineNode, "thickness", 1.0f);
       underline.SetThickness(thickness);
     }
-    label.SetUnderline(underline);
+    label.SetTextUnderline(underline);
   }
 
   // Text alignment
@@ -142,14 +163,10 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
   else if(strcmp(align, "end") == 0)
     label.SetHorizontalTextAlignment(Text::Alignment::END);
 
-  // Web text elements carry an 8px bottom margin (layout-mb-2) on top of the column gap, which
-  // is what gives cards their vertical breathing room; headings a touch more. Captions stay
-  // tight (they sit just under the value they annotate).
-  bool isHeading = strcmp(variant, "h1") == 0 || strcmp(variant, "h2") == 0 ||
-                   strcmp(variant, "h3") == 0 || strcmp(variant, "h4") == 0;
-  bool isCaption = strcmp(variant, "caption") == 0;
-  float mb = isHeading ? Metrics::Dp(12) : (isCaption ? Metrics::Dp(5) : Metrics::Dp(10));
-  label.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(mb)));
+  // The web composer's structured Text components carry layout-m-0 (zero margin) — all the
+  // inter-element spacing comes from the parent Column/Row gap, NOT from per-element margins.
+  // (Earlier this added 5-12px per element on top of the gap, doubling every vertical seam.)
+  label.SetMargin(Extents(0, 0, 0, 0));
 
   // Reactive data binding: if text is a data binding, watch for changes
   if(textNode && textNode->GetType() == TreeNode::OBJECT)

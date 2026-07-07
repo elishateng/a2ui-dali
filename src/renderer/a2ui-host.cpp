@@ -7,13 +7,13 @@
 #include "core/data-model.h"
 
 #include <dali/integration-api/debug.h>
-#include <dali-ui-foundation/devel-api/builder/json-parser.h>
+#include <dali-ui-foundation/integration-api/builder/json-parser.h>
 #include <fstream>
 #include <sstream>
 #include <vector>
 
-using Dali::Ui::JsonParser;
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::JsonParser;
+using Dali::Ui::Integration::TreeNode;
 
 namespace A2ui
 {

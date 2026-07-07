@@ -28,7 +28,7 @@
 #include <dali/public-api/adaptor-framework/window-data.h>
 #include <dali/public-api/math/rect.h>
 #include <dali-ui-foundation/dali-ui-foundation.h>
-#include <dali-ui-foundation/public-api/label.h>
+#include <dali-ui-foundation/public-api/views/text-controls/label.h>
 
 #include <cctype>
 #include <cstdio>
@@ -90,7 +90,8 @@ private:
     window.Add(root);
 
     // Gallery chrome: a light-grey rounded section with a title label at the top-left,
-    // mirroring the live composer gallery (each example card sits inside such a section).
+    // mirroring the live composer gallery (the parity reference crops include this section
+    // title + wrapper, so the renderer reproduces it for an apples-to-apples comparison).
     Dali::Ui::FlexLayout section = Dali::Ui::FlexLayout::New();
     section.SetDirection(Dali::Ui::FlexDirection::COLUMN);
     section.SetRequestedWidth(Dali::Ui::MATCH_PARENT);
@@ -104,7 +105,7 @@ private:
     title.SetText(Dali::String(TitleFromPath(mJsonlPath).c_str()));
     title.SetTextColor(Dali::Ui::UiColor(0x737373));
     title.SetFontSize(13.0f);
-    title.SetMargin(Dali::Extents(2, 0, 0, 12));
+    title.SetMargin(Dali::Extents(2, 0, 2, 8));  // small gap to the card (web title sits ~16px above the card)
     section.Add(title);
 
     // Resolve local image/icon resources (icons/<name>.png, etc.) relative to res/.
@@ -154,7 +155,10 @@ int DALI_EXPORT_API main(int argc, char** argv)
   // layout.
   int uiDpi = 160;
   if(const char* e = std::getenv("DALI_UI_DPI")) { int v = std::atoi(e); if(v > 0) uiDpi = v; }
-  Dali::Ui::UiConfig::New().SetDpi(uiDpi).Apply();
+  // dali-ui 2.5.26 dropped fluent chaining; SetDpi()/Apply() return void now.
+  Dali::Ui::UiConfig uiConfig = Dali::Ui::UiConfig::New();
+  uiConfig.SetDpi(uiDpi);
+  uiConfig.Apply();
 
   BasicRendererApp demo(application, jsonlPath);
   application.MainLoop();

@@ -26,9 +26,18 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
   bool  fullWidth  = false;   // fill container width, height from aspect ratio
 
   if(strcmp(variant, "icon") == 0)               { w = h = Metrics::IconSize(); }
-  else if(strcmp(variant, "avatar") == 0)        { w = h = Metrics::AvatarSize(); }
+  else if(strcmp(variant, "avatar") == 0)        { w = h = (mAvatarSmallHint ? Metrics::AvatarSmall() : Metrics::AvatarSize()); }
   else if(strcmp(variant, "smallFeature") == 0)  { w = h = Metrics::SmallFeature(); }
-  else if(strcmp(variant, "mediumFeature") == 0) { w = Metrics::MediumFeature(); h = Metrics::SmallFeature(); }
+  else if(strcmp(variant, "mediumFeature") == 0)
+  {
+    // 2:1 banner (the catalog box is 400x200) that FILLS its container. A fixed 400-wide box kept
+    // its 200 height even when the pane was only ~190 wide, coming out near-SQUARE. Fill the pane
+    // width and derive height from the box aspect (0.5) against the actual available width.
+    float availW = (mTextWidthBudget > 0.0f) ? std::min(mTextWidthBudget, Metrics::MediumFeature())
+                                             : Metrics::MediumFeature();
+    w = MATCH_PARENT;
+    h = availW * 0.5f;
+  }
   else if(strcmp(variant, "largeFeature") == 0)  { w = Metrics::LargeFeature();  h = Metrics::FeatureHeight(); }
   else if(strcmp(variant, "square") == 0)        { w = h = Metrics::SquareImage(); }
   else if(strcmp(variant, "header") == 0)        { w = MATCH_PARENT; h = Metrics::FeatureHeight(); isHeader = true; }
@@ -102,34 +111,82 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
       if(!isHeader && !fullWidth) ph.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
       return ph;
     }
-    ImageView img = ImageView::New(resolved.c_str());
-    img.SetFittingMode(fitMode);
-    // SetCornerRadius does NOT clip an ImageView's image visual, so round the picture with
-    // an alpha mask: a full circle for avatars, a rounded rectangle for everything else
-    // (the web rounds every image). Falls back to SetCornerRadius if the mask is missing.
-    std::string maskPath = mImageDir + (isAvatar ? "masks/circle.png" : "masks/rounded.png");
-    std::ifstream maskFile(maskPath);
-    if(maskFile.is_open()) { maskFile.close(); img.SetAlphaMaskUrl(maskPath.c_str()); }
-    else img.SetCornerRadius(cornerR);
-    img.SetDesiredWidth(static_cast<int>(w > 0.0f ? w : Metrics::CardContentWidth()));
-    img.SetDesiredHeight(static_cast<int>(vh));
+    // Full-width banner: prefer the pre-centre-cropped variant (res/sample-images/cropped/X) when
+    // present. The web cover-crops a banner from the CENTRE; the installed dali-ui ImageView crops
+    // from the top and ignores SetPixelArea, so a source pre-cropped to the banner aspect's centre
+    // band is the deterministic way to show the same pixels. Only the full-width path uses it —
+    // avatars/thumbnails keep the original (uncropped) source.
+    std::string bannerPath = resolved;
     if(isHeader || fullWidth)
     {
-      // Fill the container width; height follows the variant box (header) or the aspect
-      // ratio (full-width). align:stretch (the column default) keeps it edge-to-edge.
+      auto slash = resolved.find_last_of('/');
+      if(slash != std::string::npos)
+      {
+        std::string cand = resolved.substr(0, slash) + "/cropped/" + resolved.substr(slash + 1);
+        std::ifstream cf(cand);
+        if(cf.is_open()) { cf.close(); bannerPath = cand; }
+      }
+      vh = fullWidthHeight(bannerPath);   // recompute height from the (possibly cropped) aspect
+    }
+    ImageView img = ImageView::New(bannerPath.c_str());
+    img.SetFittingMode(fitMode);
+    // Round the picture with an alpha mask (circle for avatars, rounded-rect for the rest). Force
+    // MASKING_ON_RENDERING (GPU): the CPU/ON_LOADING path bakes the mask into the texture at load
+    // and DISCARDS SetPixelArea, which is what blocked centre-cropping before. On the GPU path the
+    // mask shader passes pixelArea through, so rounded corners AND a centred crop coexist.
+    float desiredW = (w > 0.0f ? w : Metrics::CardContentWidth());
+    std::string maskPath = mImageDir + (isAvatar ? "masks/circle.png" : "masks/rounded.png");
+    std::ifstream maskFile(maskPath);
+    if(maskFile.is_open())
+    {
+      maskFile.close();
+      img.SetAlphaMaskUrl(maskPath.c_str());
+      img.SetMaskingMode(Ui::Image::MaskingType::MASKING_ON_RENDERING);
+    }
+    else img.SetCornerRadius(cornerR);
+    img.SetDesiredWidth(static_cast<int>(desiredW));
+    if(isHeader || fullWidth)
+    {
+      // Web cover-crops a full-width banner from the CENTRE. DALi's OVER_FIT auto-crop owns the
+      // pixelArea uniform and resets it every layout pass, so a manual SetPixelArea is clobbered.
+      // FILL never touches that uniform, so: FILL + an explicit centre-band pixelArea reproduces a
+      // centred cover-crop deterministically. (NO DesiredHeight — it forced an unstable/blurry
+      // pre-cropped decode.) Band aspect == box aspect, so FILL shows it undistorted.
+      float srcAspect = 1.0f;  // h/w
+      Dali::ImageDimensions dim = Dali::GetClosestImageSize(bannerPath);
+      if(dim.GetWidth() > 0 && dim.GetHeight() > 0)
+        srcAspect = static_cast<float>(dim.GetHeight()) / static_cast<float>(dim.GetWidth());
+      float boxAspect = (desiredW > 0.0f) ? (vh / desiredW) : srcAspect;
+      if(srcAspect > boxAspect * 1.01f)              // source taller than box → centre-crop height
+      {
+        float vis = boxAspect / srcAspect;
+        img.SetPixelArea(Vector4(0.0f, (1.0f - vis) * 0.5f, 1.0f, vis));
+        img.SetFittingMode(Ui::Image::FittingMode::FILL);
+      }
+      else if(boxAspect > srcAspect * 1.01f)         // source wider than box → centre-crop width
+      {
+        float vis = srcAspect / boxAspect;
+        img.SetPixelArea(Vector4((1.0f - vis) * 0.5f, 0.0f, vis, 1.0f));
+        img.SetFittingMode(Ui::Image::FittingMode::FILL);
+      }
       img.SetRequestedWidth(MATCH_PARENT);
       img.SetRequestedHeight(vh);
     }
     else if(isAvatar || isIcon)
     {
+      img.SetDesiredHeight(static_cast<int>(vh));
       img.SetRequestedWidth(w);
       img.SetRequestedHeight(h);
       img.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
     }
     else
     {
+      img.SetDesiredHeight(static_cast<int>(vh));
       img.SetRequestedWidth(MATCH_PARENT);
-      img.SetMaximumWidth(w);
+      // Only cap when w is a real declared width. mediumFeature passes w=MATCH_PARENT (a negative
+      // sentinel) to fill its container; feeding that to SetMaximumWidth clamps the width to a
+      // NEGATIVE value and collapses the image. A MATCH_PARENT image wants no max-width cap anyway.
+      if(w > 0.0f) img.SetMaximumWidth(w);
       img.SetRequestedHeight(h);
       img.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
     }
@@ -144,7 +201,14 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
                           ? GetBoundPath(urlNode, ctx) : std::string();
   if(!boundPath.empty())
   {
-    View container = View::New();
+    // A FlexLayout (not a plain View): a plain View does NOT lay out its child by the child's
+    // RequestedWidth/Height, so a data-bound AVATAR's inner ImageView fell back to a tiny natural
+    // size (the chat avatars rendered ~13px inside a correct 40dp box). A FlexLayout sizes the
+    // child to fill, so the avatar/banner fills its container as the literal-url path already did.
+    FlexLayout container = FlexLayout::New();
+    container.SetDirection(FlexDirection::COLUMN);
+    container.SetAlignItems(FlexAlign::STRETCH);
+    container.SetJustifyContent(FlexJustify::CENTER);
     container.SetRequestedWidth((isHeader || fullWidth) ? MATCH_PARENT : w);
     container.SetRequestedHeight(fullWidth ? fullWidthHeight(resolvePath(url)) : h);
     if(!isHeader && !fullWidth) container.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));

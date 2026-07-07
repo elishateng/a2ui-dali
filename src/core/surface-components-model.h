@@ -18,7 +18,7 @@
 
 #include "component-model.h"
 #include <unordered_map>
-#include <dali-ui-foundation/devel-api/builder/tree-node.h>
+#include <dali-ui-foundation/integration-api/builder/tree-node.h>
 
 namespace A2ui
 {
@@ -34,7 +34,7 @@ public:
    * Parse the "components" JSON array and upsert into the ID map.
    * @param componentsArray TreeNode of type ARRAY containing component objects
    */
-  void AddComponents(const Dali::Ui::TreeNode& componentsArray);
+  void AddComponents(const Dali::Ui::Integration::TreeNode& componentsArray);
 
   /**
    * Get a component by ID.

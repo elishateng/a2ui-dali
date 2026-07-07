@@ -18,10 +18,11 @@ View A2uiRenderer::RenderDivider(const ComponentModel& comp)
   }
   else
   {
-    // The web sets a horizontal rule off with generous space above and below.
+    // The web Divider carries no extra margin — it sits in the parent Column's 8px gap
+    // (the gap supplies ~8px above and below). A self-margin floated it in whitespace.
     divider.SetRequestedWidth(MATCH_PARENT);
     divider.SetRequestedHeight(Metrics::BorderInput());
-    divider.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(22)), static_cast<uint16_t>(Metrics::Dp(22))));
+    divider.SetMargin(Extents(0, 0, 0, 0));
   }
 
   return divider;

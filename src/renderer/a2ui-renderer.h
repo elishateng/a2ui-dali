@@ -126,15 +126,15 @@ private:
                    Dali::Ui::InputField inputField = Dali::Ui::InputField());
 
   // === Data binding helpers ===
-  std::string ResolveString(const Dali::Ui::TreeNode* propNode, const DataContext& ctx) const;
-  float       ResolveFloat(const Dali::Ui::TreeNode* propNode, const DataContext& ctx,
+  std::string ResolveString(const Dali::Ui::Integration::TreeNode* propNode, const DataContext& ctx) const;
+  float       ResolveFloat(const Dali::Ui::Integration::TreeNode* propNode, const DataContext& ctx,
                            float fallback = 0.0f) const;
-  std::string GetBoundPath(const Dali::Ui::TreeNode* propNode, const DataContext& ctx) const;
+  std::string GetBoundPath(const Dali::Ui::Integration::TreeNode* propNode, const DataContext& ctx) const;
 
   // === Property access helpers ===
-  static const char* GetNodeString(const Dali::Ui::TreeNode& node, const char* key,
+  static const char* GetNodeString(const Dali::Ui::Integration::TreeNode& node, const char* key,
                                    const char* fallback = "");
-  static float GetNodeFloat(const Dali::Ui::TreeNode& node, const char* key,
+  static float GetNodeFloat(const Dali::Ui::Integration::TreeNode& node, const char* key,
                             float fallback = 0.0f);
   static float VariantToFontSize(const char* variant);
   static Dali::Ui::UiColor ParseHexColor(const char* hex);
@@ -142,6 +142,13 @@ private:
   ComponentRegistry  mRegistry;
   std::string        mImageDir;
   bool               mImageThumbnailHint = false; // next Image render is a Row thumbnail
+  bool               mAvatarSmallHint    = false; // next avatar Image sits in a Row (chat/list) → small
+  // Horizontal width (logical px) currently available to a Text for its line-wrap estimate.
+  // Card content is the full width; a Column inside a Row gets only the space left after its
+  // leading siblings (image/checkbox/icon), so its text wraps EARLIER. Tracking this stops a
+  // multi-line label from reserving too few lines and clipping (the web wraps; we must too).
+  // 0 = unset → text.cpp falls back to the full CardContentWidth.
+  float              mTextWidthBudget = 0.0f;
   ExpressionParser   mExprParser;
   ActionDispatcher   mActionDispatcher;
   DiffEngine         mDiffEngine;

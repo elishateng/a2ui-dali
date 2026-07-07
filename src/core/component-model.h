@@ -18,7 +18,7 @@
 
 #include <string>
 #include <vector>
-#include <dali-ui-foundation/devel-api/builder/tree-node.h>
+#include <dali-ui-foundation/integration-api/builder/tree-node.h>
 
 // TreeNode and JsonParser are in Dali::Ui namespace (dali-ui-foundation),
 // not Dali::Toolkit (dali-toolkit).
@@ -35,7 +35,7 @@ struct ComponentModel
 {
   std::string              id;
   std::string              type;      // "Text", "Row", "Column", "Card", "Button", "Image", "Divider"
-  const Dali::Ui::TreeNode* rawNode = nullptr; // Original JSON node for property lookup
+  const Dali::Ui::Integration::TreeNode* rawNode = nullptr; // Original JSON node for property lookup
   std::vector<std::string> childIds;  // children: ["id1", "id2"] (Row, Column)
   std::string              childId;   // child: "single_id" (Card, Button)
 };

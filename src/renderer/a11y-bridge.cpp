@@ -18,6 +18,8 @@
 
 using namespace Dali;
 using namespace Dali::Ui;
+// dali-ui 2.5.28 moved the builder TreeNode into the Dali::Ui::Integration namespace.
+using Dali::Ui::Integration::TreeNode;
 
 namespace A2ui
 {

@@ -17,7 +17,7 @@
 #include <functional>
 #include <sstream>
 
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::TreeNode;
 using Dali::Ui::View;
 
 namespace A2ui

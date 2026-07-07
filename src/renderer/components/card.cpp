@@ -46,6 +46,24 @@ View A2uiRenderer::RenderCard(const ComponentModel& comp,
   card.SetBorderlineWidth(Metrics::BorderCard());
   card.SetBorderlineColor(A2uiTheme::Color("OutlineLow"));  // subtle edge for a white card (web look)
 
+  // Web cards are ELEVATED with a DIRECTIONAL drop shadow: the left/right/top edges show only a
+  // hairline, while the BOTTOM carries a soft shadow ~3-4x that thickness. To match, the blurred
+  // black quad is pushed DOWN by 6dp (> its 4dp blur) so its top hides behind the card and the
+  // blur pools below; the small blur keeps the sides a thin line. alpha 0.20 lands on the web's
+  // gentle bottom halo (a wider blur read as an even halo on all sides, which was wrong). Every Card.
+  Property::Map shadow;
+  shadow.Insert("visualType", "COLOR");
+  shadow.Insert("mixColor", Vector4(0.0f, 0.0f, 0.0f, 0.20f));
+  shadow.Insert("blurRadius", Metrics::Dp(4.0f));
+  shadow.Insert("cornerRadius", Metrics::RadiusCard());
+  Property::Map shadowXform;
+  shadowXform.Insert("offset", Vector2(0.0f, Metrics::Dp(6.0f)));
+  shadowXform.Insert("offsetPolicy", Vector2(1.0f, 1.0f));  // ABSOLUTE world px
+  shadowXform.Insert("size", Vector2(1.0f, 1.0f));
+  shadowXform.Insert("sizePolicy", Vector2(0.0f, 0.0f));    // RELATIVE — 100% of the card
+  shadow.Insert("transform", shadowXform);
+  card.SetProperty(View::Property::SHADOW, shadow);
+
   // Card padding: a message-declared `padding` (logical units) wins, else the web
   // composer's ~24 inset. Both dp-scaled so the inset tracks density / high-DPI capture
   // (a raw uint16 would be only half the intended inset under the 2x capture DPI).
@@ -61,14 +79,11 @@ View A2uiRenderer::RenderCard(const ComponentModel& comp,
     card.Add(childView);
   }
 
-  // DALi FlexLayout drops the bottom padding of a COLUMN sized WRAP_CONTENT (the wrapped
-  // height = top-padding + children, omitting the bottom inset), so every card rendered
-  // ~one padding shorter than the web — worst on short cards where that's a big fraction.
-  // Add an explicit bottom spacer equal to the padding to restore the symmetric inset.
-  View bottomPad = View::New();
-  bottomPad.SetRequestedWidth(MATCH_PARENT);
-  bottomPad.SetRequestedHeight(padPx);
-  card.Add(bottomPad);
+  // NOTE: an explicit bottom-padding SPACER used to live here to work around an old dali-ui that
+  // dropped a WRAP_CONTENT column's bottom inset. The current dali-ui DOES apply SetPadding's
+  // bottom inset, so the spacer DOUBLE-counted it: measured bottom inset was 54dp vs the web's
+  // 27dp (== top), making EVERY card ~24dp too tall with a big gap under the last element. Removed
+  // — SetPadding alone now gives the symmetric inset that matches the web.
 
   // Fallback tap target: if this card contains a descendant with an
   // `action` (typically a Button — dali-ui has no native Button, so the

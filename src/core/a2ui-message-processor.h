@@ -85,13 +85,13 @@ public:
   }
 
 private:
-  bool OnCreateSurface(const Dali::Ui::TreeNode& msgBody, SurfaceModel& surface,
-                       Dali::Ui::JsonParser parser);
-  bool OnUpdateComponents(const Dali::Ui::TreeNode& msgBody, SurfaceModel& surface,
-                          Dali::Ui::JsonParser parser);
-  bool OnUpdateDataModel(const Dali::Ui::TreeNode& msgBody, SurfaceModel& surface);
-  bool OnDeleteSurface(const Dali::Ui::TreeNode& msgBody, SurfaceModel& surface);
-  bool OnCallFunction(const Dali::Ui::TreeNode& msgBody, SurfaceModel& surface);
+  bool OnCreateSurface(const Dali::Ui::Integration::TreeNode& msgBody, SurfaceModel& surface,
+                       Dali::Ui::Integration::JsonParser parser);
+  bool OnUpdateComponents(const Dali::Ui::Integration::TreeNode& msgBody, SurfaceModel& surface,
+                          Dali::Ui::Integration::JsonParser parser);
+  bool OnUpdateDataModel(const Dali::Ui::Integration::TreeNode& msgBody, SurfaceModel& surface);
+  bool OnDeleteSurface(const Dali::Ui::Integration::TreeNode& msgBody, SurfaceModel& surface);
+  bool OnCallFunction(const Dali::Ui::Integration::TreeNode& msgBody, SurfaceModel& surface);
 
   ExpressionParser* mExprParser = nullptr;
   FunctionResponseCallback mFunctionResponseCb;

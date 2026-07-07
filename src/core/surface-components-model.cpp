@@ -17,7 +17,7 @@
 #include "a2ui-sanitizer.h"
 #include <dali/integration-api/debug.h>
 
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::TreeNode;
 
 namespace A2ui
 {

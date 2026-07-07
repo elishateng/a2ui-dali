@@ -27,21 +27,22 @@ namespace Metrics
 {
 // --- Image variant sizes (catalog fixed-size variants) ---
 float IconSize();      // 50
-float AvatarSize();    // 100
+float AvatarSize();    // 100 (centred hero avatar)
+float AvatarSmall();   // 40  (avatar inside a Row — chat/list item)
 float SmallFeature();  // 200
 float MediumFeature(); // 400
 float LargeFeature();  // 800
 float SquareImage();   // 280
 float FeatureHeight(); // 200
-float CardContentWidth(); // 360 (nominal full-width-image sizing width)
-float FullWidthImageMaxAspect(); // 0.82 (web cover-crop height cap, h/w)
+float CardContentWidth(); // 400 (measured card content width = full-width-image height basis)
+float FullWidthImageMaxAspect(); // 0.72 (web cover-crop height cap, h/w — measured)
 float RowThumbnail();  // 160 (square media tile for an image inside a Row)
 
-// --- Text variant font sizes (web type scale; H1 nudged to 24 for hero numbers) ---
-float FontH1();        // 24
-float FontH2();        // 16
-float FontH3();        // 14
-float FontH4();        // 16
+// --- Text variant font sizes (MEASURED from the deployed composer, not the spec) ---
+float FontH1();        // 24 (measured; spec said 22)
+float FontH2();        // 20 (measured; spec said 16) — card names/titles, BOLD
+float FontH3();        // 18 (measured; spec said 14) — section titles, BOLD
+float FontH4();        // 16 (sub-heading, semibold)
 float FontH5();        // 14
 float FontCaption();   // 12
 float FontBody();      // 14
@@ -70,19 +71,19 @@ float BorderCard();    // 1
 float BorderInput();   // 1
 
 // --- Spacing ---
-// Inter-element vertical rhythm = ColumnGap + the element's own bottom margin (text blocks
-// add 5-12 via text.cpp; controls add a small block margin). ColumnGap is the base; the
-// margins give text/section breathing room — see the note in a2ui-metrics.cpp.
-float PadCard();       // 28
-float ColumnGap();     // 24 (base inter-element gap for distinct stacked sections)
+// The column gap is the SOLE vertical spacer between stacked elements (text bottom-margins
+// and divider margins are 0). Re-measured against the honest width-aligned diagnostic: ~20
+// between elements, ~40 (2×) around a divider — see a2ui-metrics.cpp.
+float PadCard();       // 24 (measured card padding)
+float ColumnGap();     // 20 (sole inter-element vertical gap)
 float RowGap();        // 16
 float ListItemGap();   // 14 (tighter inter-row spacing for list/template runs)
 
 // --- Form controls ---
-float InputHeight();     // 44 (shared by TextField / DateTimeInput)
+float InputHeight();     // 38 (shared by TextField / DateTimeInput)
 
 // --- Button ---
-float ButtonHeight();    // 40
+float ButtonHeight();    // 44 (measured: tall rounded pill; spec said ~36)
 float ButtonMinWidth();  // 140
 float ButtonCharWidth(); // 9  (glyph advance estimate at the button font)
 float ButtonLabelPad();  // 8

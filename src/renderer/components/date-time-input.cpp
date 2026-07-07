@@ -63,12 +63,21 @@ View A2uiRenderer::RenderDateTimeInput(const ComponentModel& comp, DataContext& 
   inputLabel.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f));
   inputBox.Add(inputLabel);
 
-  Label calIcon = Label::New("\xF0\x9F\x93\x85");  // 📅
-  calIcon.SetFontSize(Metrics::FontInput());
-  calIcon.SetRequestedWidth(WRAP_CONTENT);
-  calIcon.SetRequestedHeight(WRAP_CONTENT);
-  calIcon.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(6)), static_cast<uint16_t>(Metrics::Dp(8)), 0, 0));
-  inputBox.Add(calIcon);
+  // Calendar affordance — a MUTED MONOCHROME icon. The old 📅 emoji rendered in full colour,
+  // reading as a red blob next to the field; the web shows a small grey picker glyph. Use the
+  // shipped calendar glyph tinted to the muted text colour (falls back to no icon if missing).
+  std::string calPath = mImageDir + "icons/calendarToday.png";
+  std::ifstream calFile(calPath);
+  if(calFile.is_open())
+  {
+    calFile.close();
+    ImageView calIcon = ImageView::New(calPath.c_str());
+    calIcon.SetRequestedWidth(Metrics::Dp(16));
+    calIcon.SetRequestedHeight(Metrics::Dp(16));
+    calIcon.SetImageColor(COLOR_TEXT_MUTED);
+    calIcon.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(6)), static_cast<uint16_t>(Metrics::Dp(8)), 0, 0));
+    inputBox.Add(calIcon);
+  }
 
   if(!boundPath.empty())
   {

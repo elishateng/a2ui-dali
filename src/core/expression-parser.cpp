@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::TreeNode;
 
 namespace A2ui
 {
@@ -617,7 +617,7 @@ std::string ExpressionParser::ResolveInlineExpression(const std::string& expr, c
 
     json << "}";
 
-    Dali::Ui::JsonParser parser = Dali::Ui::JsonParser::New();
+    Dali::Ui::Integration::JsonParser parser = Dali::Ui::Integration::JsonParser::New();
     if(!parser.Parse(json.str()))
     {
       DALI_LOG_ERROR("[A2UI] InterpolateString: failed to parse inline args: %s\n", json.str().c_str());

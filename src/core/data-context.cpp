@@ -80,7 +80,7 @@ bool DataContext::GetBool(const std::string& path, bool fallback) const
   return mDataModel.GetBool(Resolve(path), fallback);
 }
 
-const Dali::Ui::TreeNode* DataContext::ResolvePath(const std::string& path) const
+const Dali::Ui::Integration::TreeNode* DataContext::ResolvePath(const std::string& path) const
 {
   return mDataModel.ResolvePath(Resolve(path));
 }

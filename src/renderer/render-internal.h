@@ -20,9 +20,9 @@
 #include <dali/public-api/events/tap-gesture-detector.h>
 #include <dali/public-api/events/touch-event.h>
 #include <dali-ui-foundation/dali-ui-foundation.h>
-#include <dali-ui-foundation/public-api/image-view.h>
+#include <dali-ui-foundation/public-api/views/image/image-view.h>
 #include <dali-ui-foundation/public-api/layouts/flex-layout-params.h>
-#include <dali-ui-foundation/public-api/scroll-view.h>
+#include <dali-ui-foundation/public-api/views/scroll/scroll-view.h>
 #include <dali-ui-foundation/public-api/text/text-enumerations.h>
 #include <dali-ui-foundation/public-api/text/style/underline.h>
 
@@ -33,4 +33,4 @@
 
 using namespace Dali;       // intentional in this internal-only implementation header
 using namespace Dali::Ui;
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::TreeNode;

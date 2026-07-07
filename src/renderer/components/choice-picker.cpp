@@ -16,20 +16,28 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
   container.SetRequestedWidth(MATCH_PARENT);
   container.SetRequestedHeight(WRAP_CONTENT);
   container.SetMargin(Extents(0, 0, static_cast<uint16_t>(Metrics::Dp(4)), static_cast<uint16_t>(Metrics::Dp(4))));
-  if(chips) container.SetAlignItems(FlexAlign::CENTER);
-
-  // Label (optional) — a vertical list puts it above; chips have none (the label is a
-  // sibling Text in these layouts).
-  const char* labelText = GetNodeString(*comp.rawNode, "label", "");
-  if(!chips && labelText[0] != '\0')
+  if(chips)
   {
-    Label label = Label::New(labelText);
-    label.SetFontSize(Metrics::FontLabel());
-    label.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));
-    label.SetRequestedWidth(MATCH_PARENT);
-    label.SetRequestedHeight(WRAP_CONTENT);
-    label.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(Metrics::Dp(4))));
-    container.Add(label);
+    container.SetAlignItems(FlexAlign::CENTER);
+    container.SetWrap(FlexWrap::WRAP);  // chips flow to new rows in a narrow column (e.g. the
+                                        // invitation Location picker) instead of clipping to "Gr…"
+  }
+
+  // Label (optional). A vertical list puts it above its rows directly. A chips picker is a ROW
+  // (the pills flow horizontally), so its label can't go INSIDE the row — it must sit ABOVE in a
+  // wrapping Column built at the return. Earlier the chips branch dropped the label entirely, so
+  // the invitation builder's "Location" field had NO label while every sibling field showed one.
+  const char* labelText = GetNodeString(*comp.rawNode, "label", "");
+  Label headerLabel;
+  if(labelText[0] != '\0')
+  {
+    headerLabel = Label::New(labelText);
+    headerLabel.SetFontSize(Metrics::FontLabel());
+    headerLabel.SetTextColor(A2uiTheme::Color("OnSurfaceContainerLow"));
+    headerLabel.SetRequestedWidth(MATCH_PARENT);
+    headerLabel.SetRequestedHeight(WRAP_CONTENT);
+    headerLabel.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(Metrics::Dp(4))));
+    if(!chips) container.Add(headerLabel);
   }
 
   const TreeNode* valueNode = comp.rawNode->Find("value");
@@ -103,7 +111,23 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
       // white card, like the web's plain-text chip) + dark label. (DALi treats 0x00000000
       // as opaque black, so the unselected fill must be the card colour, not "transparent".)
       optRow.SetBackgroundColor(selected ? COLOR_TEXT_DEFAULT : COLOR_CARD_BG);
-      if(index > 0) optRow.SetMargin(Extents(static_cast<uint16_t>(Metrics::Dp(8)), 0, 0, 0));
+      // Unselected chips show the web's hairline OUTLINE (otherwise a white-on-white pill that
+      // reads as plain text); the selected chip's dark fill is its own emphasis, no border.
+      if(selected)
+      {
+        optRow.SetBorderlineWidth(0.0f);
+      }
+      else
+      {
+        optRow.SetBorderlineWidth(Metrics::BorderInput());
+        optRow.SetBorderlineColor(COLOR_BTN_BORDER);
+      }
+      // Inter-chip gap via RIGHT margin (not left): a left margin on chip #2,#3 INDENTED them
+      // when the picker wrapped to a vertical stack (narrow Location column), breaking the left
+      // edge. Right margin spaces chips on a row yet keeps every wrapped chip flush-left. Bottom
+      // margin separates wrapped rows. Extents = (left, right, top, bottom).
+      optRow.SetMargin(Extents(0, static_cast<uint16_t>(Metrics::Dp(8)),
+                               0, static_cast<uint16_t>(Metrics::Dp(6))));
       optLbl.SetFontSize(Metrics::FontChoice());
       optLbl.SetTextColor(selected ? COLOR_CARD_BG : COLOR_TEXT_DEFAULT);
       optRow.Add(optLbl);
@@ -132,14 +156,15 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
       // mutuallyExclusive pickers store the selection as a one-element array; preserve that
       // shape so the value round-trips the way the server sent it.
       bool arrayShape = chips;
-      optRow.AsInteractive([this, optValue, boundPath, ctx, arrayShape](InteractiveTrait& trait) mutable {
-        trait.ClickedSignal().Connect(this,
-          [optValue, boundPath, ctx, arrayShape](View, const InputEvent&) mutable -> bool {
-            if(arrayShape) ctx.GetDataModel().SetData(boundPath, "[\"" + optValue + "\"]");
-            else           ctx.GetDataModel().SetValue(boundPath, optValue);
-            return true;
-          });
-      });
+      // dali-ui 2.5.26: AsInteractive() now returns the InteractiveTrait directly
+      // (no lambda configurator). Attach the click handler to the returned trait.
+      InteractiveTrait trait = optRow.AsInteractive();
+      trait.ClickedSignal().Connect(this,
+        [optValue, boundPath, ctx, arrayShape](View, const InputEvent&) mutable -> bool {
+          if(arrayShape) ctx.GetDataModel().SetData(boundPath, "[\"" + optValue + "\"]");
+          else           ctx.GetDataModel().SetValue(boundPath, optValue);
+          return true;
+        });
     }
 
     opts->push_back({optRow, optLbl, radioIcon, optValue});
@@ -160,6 +185,8 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
           {
             o.row.SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : COLOR_CARD_BG);
             o.lbl.SetTextColor(sel ? COLOR_CARD_BG : COLOR_TEXT_DEFAULT);
+            o.row.SetBorderlineWidth(sel ? 0.0f : Metrics::BorderInput());
+            o.row.SetBorderlineColor(COLOR_BTN_BORDER);
           }
           else if(o.icon)
           {
@@ -167,6 +194,19 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
           }
         }
       });
+  }
+
+  // Chips picker WITH a label: stack the label above the wrapping chip row in an outer Column so
+  // it lines up with the other form fields' labels (e.g. the invitation builder "Location").
+  if(chips && headerLabel)
+  {
+    FlexLayout outer = FlexLayout::New();
+    outer.SetDirection(FlexDirection::COLUMN);
+    outer.SetRequestedWidth(MATCH_PARENT);
+    outer.SetRequestedHeight(WRAP_CONTENT);
+    outer.Add(headerLabel);
+    outer.Add(container);
+    return outer;
   }
 
   return container;

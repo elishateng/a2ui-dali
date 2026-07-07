@@ -20,8 +20,8 @@
 #include <functional>
 #include <unordered_map>
 #include <vector>
-#include <dali-ui-foundation/devel-api/builder/json-parser.h>
-#include <dali-ui-foundation/devel-api/builder/tree-node.h>
+#include <dali-ui-foundation/integration-api/builder/json-parser.h>
+#include <dali-ui-foundation/integration-api/builder/tree-node.h>
 
 namespace A2ui
 {
@@ -68,7 +68,7 @@ public:
    * Set data from a pre-parsed TreeNode value at the given path.
    * Notifies observers on the affected path.
    */
-  bool SetDataFromNode(const std::string& path, const Dali::Ui::TreeNode& value);
+  bool SetDataFromNode(const std::string& path, const Dali::Ui::Integration::TreeNode& value);
 
   /**
    * Set a single string value at an arbitrary JSON Pointer path.
@@ -89,7 +89,7 @@ public:
 
   // --- Data reading ---
 
-  const Dali::Ui::TreeNode* ResolvePath(const std::string& path) const;
+  const Dali::Ui::Integration::TreeNode* ResolvePath(const std::string& path) const;
   std::string GetString(const std::string& path) const;
   float GetFloat(const std::string& path, float fallback = 0.0f) const;
   bool GetBool(const std::string& path, bool fallback = false) const;
@@ -123,10 +123,10 @@ private:
   bool MergeAtPath(const std::string& path, const std::string& valueJson);
   void NotifyObservers(const std::string& path);
 
-  static std::string TreeNodeToJson(const Dali::Ui::TreeNode& node);
+  static std::string TreeNodeToJson(const Dali::Ui::Integration::TreeNode& node);
   static void EscapeJsonString(std::ostringstream& oss, const char* str);
 
-  Dali::Ui::JsonParser mParser;
+  Dali::Ui::Integration::JsonParser mParser;
   std::string          mJsonString;
 
   struct Observer

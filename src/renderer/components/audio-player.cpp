@@ -49,6 +49,26 @@ View A2uiRenderer::RenderAudioPlayer(const ComponentModel& comp, DataContext& ct
   track.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexBasis(0.0f));
   bar.Add(track);
 
-  return bar;
+  // The AudioPlayer's optional `description` (a track title/summary) renders as a muted caption
+  // ABOVE the control in the web — card 26's "The Future of AI in Product Design". It was dropped
+  // entirely. Resolve it (it's usually a data binding) and stack it over the bar in a Column.
+  const TreeNode* descNode = comp.rawNode ? comp.rawNode->Find("description") : nullptr;
+  std::string desc = descNode ? ResolveString(descNode, ctx) : "";
+  if(desc.empty()) return bar;
+
+  FlexLayout col = FlexLayout::New();
+  col.SetDirection(FlexDirection::COLUMN);
+  col.SetRequestedWidth(MATCH_PARENT);
+  col.SetRequestedHeight(WRAP_CONTENT);
+  Label descLabel = Label::New(desc.c_str());
+  descLabel.SetFontSize(Metrics::FontCaption());
+  descLabel.SetTextColor(COLOR_TEXT_MUTED);
+  descLabel.SetRequestedWidth(MATCH_PARENT);
+  descLabel.SetMultiLine(true);
+  descLabel.SetRequestedHeight(Metrics::LineHeight(Metrics::FontCaption()));
+  descLabel.SetMargin(Extents(0, 0, 0, static_cast<uint16_t>(Metrics::Dp(6))));
+  col.Add(descLabel);
+  col.Add(bar);
+  return col;
 }
 } // namespace A2ui

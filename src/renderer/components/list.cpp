@@ -64,9 +64,12 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
 {
   if(!comp.rawNode) return View::New();
 
-  ScrollView scrollView = ScrollView::New();
-  scrollView.SetRequestedWidth(MATCH_PARENT);
-  scrollView.SetRequestedHeight(WRAP_CONTENT);
+  // A List is a content-sized layout, NOT a scroll viewport: the gallery cards never scroll
+  // inside a List, and the web renders the rows inline. Wrapping it in a ScrollView made the
+  // ScrollView's WRAP_CONTENT height collapse to ~0 when the List sat inside a flex-weighted
+  // column of a Row (the incremental-dashboard logs panel vanished) — the inner FlexLayout's
+  // content height didn't propagate up through the ScrollView. So we return the FlexLayout
+  // directly; its WRAP_CONTENT height resolves correctly in every flex context.
 
   // Direction: "vertical" (default) → COLUMN, "horizontal" → ROW
   std::string direction = GetNodeString(*comp.rawNode, "direction", "vertical");
@@ -115,7 +118,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
       // we don't accidentally fall through to the template or childIds paths.
       std::string tmplId = cidNode->GetString();
       std::string dataBindingPath = ctx.Resolve(pathNode->GetString());
-      const Dali::Ui::TreeNode* arrayNode =
+      const Dali::Ui::Integration::TreeNode* arrayNode =
         ctx.GetDataModel().ResolvePath(dataBindingPath);
 
       if(arrayNode && arrayNode->GetType() == TreeNode::ARRAY)
@@ -139,8 +142,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
         }
       }
 
-      scrollView.Add(listContainer);
-      return scrollView;
+      return listContainer;
     }
 
     const TreeNode* templateNode = childrenNode->Find("template");
@@ -152,7 +154,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
       if(tmplComponents && tmplBinding && tmplBinding->GetType() == TreeNode::STRING)
       {
         std::string dataBindingPath = ctx.Resolve(tmplBinding->GetString());
-        const Dali::Ui::TreeNode* arrayNode = ctx.GetDataModel().ResolvePath(dataBindingPath);
+        const Dali::Ui::Integration::TreeNode* arrayNode = ctx.GetDataModel().ResolvePath(dataBindingPath);
 
         if(arrayNode && arrayNode->GetType() == TreeNode::ARRAY)
         {
@@ -196,8 +198,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
             itemIndex++;
           }
 
-          scrollView.Add(listContainer);
-          return scrollView;
+          return listContainer;
         }
       }
     }
@@ -221,7 +222,6 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
     index++;
   }
 
-  scrollView.Add(listContainer);
-  return scrollView;
+  return listContainer;
 }
 } // namespace A2ui

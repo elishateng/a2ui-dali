@@ -3,6 +3,38 @@
 namespace A2ui
 {
 
+namespace
+{
+// Count UTF-8 CODEPOINTS (visible glyphs), not bytes. A multibyte run like "★★★★★" is 15 bytes
+// but 5 glyphs; sizing a Text's width from the byte count reserved ~3x too much room and shoved
+// the trailing sibling far to the right (the product "(2,847 reviews)" flung off after the
+// stars). Continuation bytes have the top bits 10xxxxxx, so we skip them.
+std::size_t Utf8Len(const char* s, std::size_t bytes)
+{
+  std::size_t n = 0;
+  for(std::size_t i = 0; i < bytes; ++i)
+    if((static_cast<unsigned char>(s[i]) & 0xC0) != 0x80) ++n;
+  return n;
+}
+
+// Estimate a string's natural rendered width (device px) for reserving a trailing label's slot.
+// Glyph advance varies hugely: ASCII digits/letters are ~0.6em, but a wide symbol glyph (a ★
+// rating star, an emoji) is ~1.0em. Counting every glyph at 0.6em CLIPPED "★★★★★" to "★★★…"
+// (looked like a 3-star rating); counting bytes over-reserved 3x (flung the sibling right). So
+// weight ASCII lead bytes at 0.6 and non-ASCII glyphs (lead byte >= 0xC0) at 1.0, + 1em cushion.
+float TextNaturalWidth(const char* s, std::size_t bytes, float fontSize)
+{
+  float units = 0.0f;
+  for(std::size_t i = 0; i < bytes; ++i)
+  {
+    unsigned char b = static_cast<unsigned char>(s[i]);
+    if((b & 0xC0) == 0x80) continue;       // continuation byte — same glyph
+    units += (b >= 0xC0) ? 1.0f : 0.6f;    // wide (multibyte) glyph vs ASCII
+  }
+  return units * fontSize + fontSize;
+}
+} // namespace
+
 View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
                                        const SurfaceComponentsModel& components,
                                        DataContext& ctx,
@@ -59,6 +91,34 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
   bool isRow = (direction == FlexDirection::ROW || direction == FlexDirection::ROW_REVERSE);
   bool isColumnCentered = !isRow && comp.rawNode &&
     (strcmp(GetNodeString(*comp.rawNode, "align", "start"), "center") == 0);
+  // align:end column — its leaf text must RIGHT-align (the flight times "Arrives"/"11:30 PM"
+  // column). AlignItems:FLEX_END alone doesn't move a MATCH_PARENT-width Label, so its glyphs
+  // stayed left and the column read ~11% short of the card's right edge.
+  bool isColumnEnd = !isRow && comp.rawNode &&
+    (strcmp(GetNodeString(*comp.rawNode, "align", "start"), "end") == 0);
+  // A Column with no explicit align is "centred-style" if it visibly centres its other content
+  // (a centered header sub-column, a justify:center row) — an auth/dialog card. There a Button
+  // should centre too (card 09 "Sign in"), whereas a left-aligned content column centres nothing
+  // and its Button sits at the left (card 29 "Watch Trailer", card 32 "Submit"). This separates
+  // the two cases without per-card rules — both columns are otherwise structurally identical.
+  bool columnCentredStyle = isColumnCentered;
+  if(!isRow && !columnCentredStyle)
+  {
+    for(const auto& cid : comp.childIds)
+    {
+      const ComponentModel* cc = components.GetComponent(cid);
+      if(!cc || !cc->rawNode) continue;
+      // A nested Column that centres its OWN children (align:center → horizontal) or a Row that
+      // centres horizontally (justify:center) is a real "centred card" signal. A Row's align:center
+      // is just VERTICAL cross-axis centering of an icon+text line (event-detail, rating rows) —
+      // neutral, NOT a signal — so check justify for Rows and align for Columns, never both.
+      bool sibRow = (cc->type == "Row");
+      bool centredSib = sibRow
+        ? (strcmp(GetNodeString(*cc->rawNode, "justify", ""), "center") == 0)
+        : (strcmp(GetNodeString(*cc->rawNode, "align", ""), "center") == 0);
+      if(centredSib) { columnCentredStyle = true; break; }
+    }
+  }
 
   // Default gap = the web composer's flex gaps (Row g-4 = 16, Column g-2 = 8); a
   // message-declared `gap` (logical) wins and is dp-scaled to match.
@@ -67,13 +127,132 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
                 ? Metrics::Dp(GetNodeFloat(*comp.rawNode, "gap", 0.0f))
                 : defaultGap;
 
+  // --- Text wrap-width budget ---------------------------------------------------------------
+  // The width (device px) a descendant Text may use for its line-wrap estimate. A Column hands
+  // its full width down; a Row splits it, and a column next to a leading image/checkbox/icon
+  // gets only the leftover — so its text wraps EARLIER and must reserve more lines (or it clips,
+  // the bug seen on podcast/task). 0 on entry → fall back to the full card content width.
+  float savedBudget  = mTextWidthBudget;
+  float parentBudget = (mTextWidthBudget > 0.0f) ? mTextWidthBudget : Metrics::CardContentWidth();
+  {
+    float ownPad = comp.rawNode ? GetNodeFloat(*comp.rawNode, "padding", 0.0f) : 0.0f;
+    if(ownPad > 0.0f) parentBudget -= 2.0f * Metrics::Dp(ownPad);
+  }
+  if(parentBudget < Metrics::Dp(40)) parentBudget = Metrics::CardContentWidth();
+
+  // On-screen width (device px) of a non-container child, for dividing a Row's space.
+  auto estChildWidth = [this, &components, parentBudget](const ComponentModel* cc) -> float {
+    if(!cc) return Metrics::Dp(40);
+    const std::string& t = cc->type;
+    if(t == "Image")
+    {
+      if(cc->rawNode)
+      {
+        float jw = GetNodeFloat(*cc->rawNode, "width", -1.0f);
+        if(jw > 0.0f) return Metrics::Dp(jw);
+        const char* v = GetNodeString(*cc->rawNode, "variant", "");
+        if(strcmp(v, "avatar") == 0) return Metrics::AvatarSize();
+        if(strcmp(v, "icon") == 0)   return Metrics::IconSize();
+      }
+      return Metrics::RowThumbnail();          // default image in a row renders as a thumbnail
+    }
+    if(t == "Icon")     return Metrics::Dp(28);
+    if(t == "CheckBox") return Metrics::Dp(44);
+    if(t == "Button")   return Metrics::ButtonMinWidth();
+    if(t == "Text" && cc->rawNode)
+    {
+      const TreeNode* tn = cc->rawNode->Find("text");
+      float fs  = VariantToFontSize(GetNodeString(*cc->rawNode, "variant", "body"));
+      float len = (tn && tn->GetType() == TreeNode::STRING)
+                    ? static_cast<float>(Utf8Len(tn->GetString(), strlen(tn->GetString()))) : 8.0f;
+      float w   = len * fs * 0.58f + fs;
+      return (w < parentBudget) ? w : parentBudget;
+    }
+    return Metrics::Dp(40);
+  };
+
+  // For a Row, pre-divide the leftover among the container kids AND the LEAF TEXT kids. A leaf
+  // Text in a Row (an "icon + label" line, a "label  value" line) must wrap at the space LEFT
+  // after the fixed siblings — NOT at its own estChildWidth (which can't see a data-bound
+  // value's length, defaults to 8 chars, and would make text.cpp count 4 phantom lines and
+  // stack the row vertically — the event-detail icon-drops-below-text bug).
+  float rowColBudget   = parentBudget;   // width handed to a container child
+  float rowTextBudget  = parentBudget;   // width handed to a leaf Text child
+  // A mixed Row (a growing container sharing the row with FIXED leaves — a checkbox, a leading
+  // image, a trailing priority Icon, a "8:09"/"Backend" pinned caption) must give the container
+  // a CONCRETE leftover width, not MATCH_PARENT/basis-0. A MATCH_PARENT container grabs the whole
+  // row and pushes the trailing fixed leaf off the card edge so it vanishes (the task-card "!" +
+  // "Backend", the track-list durations). These hold that concrete width + whether to apply it.
+  float rowContainerConcreteWidth      = parentBudget;
+  bool  rowContainerNeedsConcreteWidth = false;
+  if(isRow && !comp.childIds.empty())
+  {
+    float nonTextFixed = 0.0f; int containerCount = 0, textCount = 0;
+    for(const auto& cid : comp.childIds)
+    {
+      const ComponentModel* cc = components.GetComponent(cid);
+      const std::string t = cc ? cc->type : std::string();
+      if(t == "Column" || t == "Row" || t == "Card" || t == "List") ++containerCount;
+      else if(t == "Text")                                          ++textCount;
+      else nonTextFixed += estChildWidth(cc);   // icon / checkbox / image / fixed leaf
+    }
+    float gapsTotal = gap * (comp.childIds.size() > 1 ? (comp.childIds.size() - 1) : 0);
+    float leftover  = parentBudget - nonTextFixed - gapsTotal;
+    int   sharers   = containerCount + textCount;
+    if(sharers > 0)
+    {
+      float share = leftover / sharers;
+      if(share < Metrics::Dp(40)) share = Metrics::Dp(40);
+      if(containerCount > 0) rowColBudget  = share;
+      if(textCount > 0)      rowTextBudget = share;
+    }
+    // When a growing container shares the row with FIXED leaves (icon/checkbox/image already in
+    // nonTextFixed) OR small pinned leaf texts, hand the container the CONCRETE remaining width so
+    // those trailing leaves keep their slot. Reserve the leaf texts at their natural width, then
+    // split the rest among the container kids. (estChildWidth caps a text at parentBudget, so a
+    // long leaf can't over-reserve.)
+    if(containerCount > 0 && (nonTextFixed > 0.0f || textCount > 0))
+    {
+      float textReserved = 0.0f;
+      for(const auto& cid : comp.childIds)
+      {
+        const ComponentModel* cc = components.GetComponent(cid);
+        if(cc && cc->type == "Text") textReserved += estChildWidth(cc);
+      }
+      rowContainerConcreteWidth = (leftover - textReserved) / static_cast<float>(containerCount);
+      if(rowContainerConcreteWidth < Metrics::Dp(80)) rowContainerConcreteWidth = Metrics::Dp(80);
+      rowContainerNeedsConcreteWidth = true;
+      rowColBudget = rowContainerConcreteWidth;   // inner-text wrap budget tracks the real width
+    }
+    // A row of inline texts (no flex-grow container) whose natural widths together exceed the
+    // row WRAPS to the next line instead of overflowing the card — the invitation preview's
+    // "Celebrating" + "Alex Johnson" (h3) was spilling past the card edge. Each text then keeps
+    // its full width on its own line. (rowTextBudget gives each its full natural size below.)
+    if(containerCount == 0 && textCount >= 2)
+    {
+      float totalNatural = nonTextFixed + gapsTotal;
+      for(const auto& cid : comp.childIds)
+      {
+        const ComponentModel* cc = components.GetComponent(cid);
+        if(cc && cc->type == "Text") totalNatural += estChildWidth(cc);
+      }
+      if(totalNatural > parentBudget)
+      {
+        flex.SetWrap(FlexWrap::WRAP);
+        rowTextBudget = parentBudget;   // a wrapped text gets the full row width on its line
+      }
+    }
+  }
+
   // Data-driven child list (children: {path, componentId}) — instantiate the template per
   // array element. Must run before the static childIds loop, which would render nothing
   // (the parser leaves childIds empty for the OBJECT form). Template runs are list rows, so
   // they pack with the tighter list gap (unless the message set an explicit gap).
   float tmplGap = (comp.rawNode && comp.rawNode->Find("gap")) ? gap : Metrics::ListItemGap();
+  mTextWidthBudget = isRow ? rowColBudget : parentBudget;
   if(RenderTemplateChildren(comp, components, ctx, flex, isRow, tmplGap))
   {
+    mTextWidthBudget = savedBudget;
     return flex;
   }
 
@@ -115,11 +294,42 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
     {
       mImageThumbnailHint = true;
     }
+    // An avatar that sits inside a Row (chat bubble, list item) is a small inline avatar, not
+    // a centred hero — flag it so RenderImage uses the small box instead of the 100dp hero.
+    if(isRow && childComp && childComp->type == "Image" && childComp->rawNode &&
+       strcmp(GetNodeString(*childComp->rawNode, "variant", ""), "avatar") == 0)
+    {
+      mAvatarSmallHint = true;
+    }
+    // Give this child the width it will actually occupy, so a Text inside it wraps at the same
+    // place as the web: a Row's container child gets the divided column budget, a leaf gets its
+    // own estimate, and a Column's child gets the full parent width.
+    if(isRow)
+    {
+      const std::string ct = childComp ? childComp->type : std::string();
+      bool childIsContainer = (ct == "Column" || ct == "Row" || ct == "Card" || ct == "List");
+      if(childIsContainer)   mTextWidthBudget = rowColBudget;
+      // A leaf Text in a DISTRIBUTED row (spaceBetween/around/evenly) takes its NATURAL width and
+      // does NOT wrap — give it the FULL row width as its wrap budget so a short title like "The
+      // Italian Kitchen" reserves 1 line. (estChildWidth can't see a DATA-BOUND value's real
+      // length — it defaults to 8 chars — so it under-budgets and forces a phantom 2nd line that
+      // inflates the row and drops the trailing "$$$" half a line via align:center.)
+      else if(ct == "Text")  mTextWidthBudget = distributed ? parentBudget : rowTextBudget;
+      else                   mTextWidthBudget = estChildWidth(childComp);
+    }
+    else
+    {
+      mTextWidthBudget = parentBudget;
+    }
     View child = RenderComponent(childId, components, ctx);
     mImageThumbnailHint = false;
+    mAvatarSmallHint = false;
 
     if(gap > 0.0f && index > 0)
     {
+      // (Tried halving the gap around Dividers to slim carded forms — but the web's divider spacing
+      // varies per card, so it over-shortened coffee/purchase and DROPPED the mean. Reverted: the
+      // ±1-2px per-card spacing drift is a documented limit, not cleanly fixable with one rule.)
       uint16_t g = static_cast<uint16_t>(gap);
       if(isRow)
         child.SetMargin(Extents(g, 0, 0, 0));
@@ -136,7 +346,18 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
       Label labelChild = Label::DownCast(child);
       if(labelChild)
       {
-        labelChild.SetHorizontalTextAlignment(Text::Alignment::CENTER);
+        // The web's align-items:center centres each child BOX, but the text inside keeps its
+        // default text-align:left — so a SHORT (one-line) label looks centred while a WRAPPED
+        // paragraph stays left (the user-profile bio). Match that: centre the glyphs only when
+        // the label fits on one line; let a multi-line label keep its default (left) alignment.
+        Dali::String ltxt = labelChild.GetText();
+        float lfs = (childComp && childComp->rawNode)
+                      ? VariantToFontSize(GetNodeString(*childComp->rawNode, "variant", "body"))
+                      : Metrics::FontBody();
+        float naturalW = TextNaturalWidth(ltxt.CStr(), ltxt.Size(), lfs);  // glyph-weighted, not bytes
+        float budget   = (mTextWidthBudget > 0.0f) ? mTextWidthBudget : Metrics::CardContentWidth();
+        if(naturalW <= budget)
+          labelChild.SetHorizontalTextAlignment(Text::Alignment::CENTER);
       }
       std::string ct = childComp ? childComp->type : std::string();
       bool fullWidth = labelChild || ct == "TextField" || ct == "Slider" ||
@@ -147,6 +368,22 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
         child.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::STRETCH));
       }
     }
+    // align:end column → right-align its leaf text (the MATCH_PARENT Label fills the column, so
+    // AlignItems:FLEX_END can't move it; the glyphs need text-align:end). Fixes the flight
+    // "Arrives"/"11:30 PM" sitting ~11% short of the card's right edge.
+    else if(isColumnEnd)
+    {
+      Label labelChild = Label::DownCast(child);
+      if(labelChild) labelChild.SetHorizontalTextAlignment(Text::Alignment::END);
+    }
+    // A Button in a LEFT-aligned content Column sits at the column's start (left) — button.cpp
+    // pins AlignSelf:CENTER, but a left content column (movie "Watch Trailer", form "Submit")
+    // keeps the button left like web. In a centred-style column (auth/dialog card, e.g. 09
+    // "Sign in") we leave the button's CENTER so it stays centred with the rest of the content.
+    else if(!isRow && childComp && childComp->type == "Button" && !columnCentredStyle)
+    {
+      child.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::FLEX_START));
+    }
 
     if(childComp && childComp->rawNode)
     {
@@ -155,6 +392,11 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
       {
         child.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(weight).SetFlexBasis(0.0f));
         child.SetRequestedWidth(0.0f);
+        // NOTE: the web keeps each weighted column ≥ its content (flex min-width:auto) so the grid
+        // OVERFLOWS the card and only the last column clips at the edge. A DALi MinimumWidth on the
+        // value cells reproduced "Price in full" but, with basis-0 grow, the asset-info column
+        // (weight 2, a nested Row) then failed to claim its remainder and its name clipped to "..".
+        // So we keep the fit-to-width weighting (long values ellipsize) — see report card 33 note.
       }
       else if(isRow)
       {
@@ -184,12 +426,23 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
             child.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexShrink(1.0f).SetFlexBasis(0.0f));
             child.SetRequestedWidth(0.0f);
           }
+          else if(rowContainerNeedsConcreteWidth)
+          {
+            // Mixed row (a fixed checkbox/image/trailing icon or a pinned "8:09"/"Backend"
+            // caption + this info column). Give the column the CONCRETE leftover width (row minus
+            // the fixed/pinned leaves) so (a) its inner text still measures against a real width —
+            // RequestedWidth 0 blanked it, and (b) the trailing fixed leaf keeps its slot —
+            // MATCH_PARENT grabbed the whole row and pushed the "!"/duration/"Backend" off the
+            // card. Grow/shrink lets the column absorb any rounding slack without overrunning.
+            child.SetRequestedWidth(rowContainerConcreteWidth);
+            child.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexShrink(1.0f));
+          }
           else
           {
-            // Mixed row (text/image + an info column) → the container fills the remaining
-            // space. Do NOT pin RequestedWidth to 0 here: that collapses the column's
-            // MATCH_PARENT text to nothing (a track row's title/artist rendered blank).
-            child.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexShrink(1.0f));
+            // Lone container in the row (no fixed/pinned sibling to protect) → fill from a 0
+            // basis. Basis 0 (not RequestedWidth 0) preserves the column's MATCH_PARENT inner
+            // text — RequestedWidth 0 was what blanked it before.
+            child.SetLayoutParams(FlexLayoutParams::New().SetFlexGrow(1.0f).SetFlexShrink(1.0f).SetFlexBasis(0.0f));
           }
         }
         else
@@ -204,11 +457,14 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
             // flex-grow sibling gets its space consumed and clips (e.g. "$6.45" → "$6").
             // Reserve a width from the glyph count and stop it shrinking so it stays intact.
             Dali::String t = labelChild.GetText();
-            if(t.Size() > 0 && t.Size() <= 16)
+            std::size_t glyphs = Utf8Len(t.CStr(), t.Size());   // codepoints, not bytes (★★★★★)
+            if(glyphs > 0 && glyphs <= 16)
             {
               float fs = (childComp && childComp->rawNode)
                 ? VariantToFontSize(GetNodeString(*childComp->rawNode, "variant", "body")) : Metrics::FontBody();
-              labelChild.SetRequestedWidth(static_cast<float>(t.Size()) * fs * 0.6f + fs);
+              // Reserve the glyph-weighted natural width so wide ★ glyphs aren't clipped to "★★★…"
+              // and ASCII values like "$6.45"/"8:09" aren't over-reserved.
+              labelChild.SetRequestedWidth(TextNaturalWidth(t.CStr(), t.Size(), fs));
               labelChild.SetLayoutParams(FlexLayoutParams::New().SetFlexShrink(0.0f));
               pinned = true;
             }
@@ -225,6 +481,14 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
             {
               child.SetRequestedWidth(declared);
             }
+          }
+          else if(childType == "Icon")
+          {
+            // A small leading/trailing Icon (a row bullet, a priority "!" , a trend arrow) has a
+            // fixed size and must NOT shrink — otherwise a flex-grown sibling squeezes it to zero
+            // and it vanishes (the task-card "!" and "Backend" tag disappearing).
+            child.SetLayoutParams(FlexLayoutParams::New().SetFlexShrink(0.0f));
+            pinned = true;
           }
           else if(child.GetRequestedWidth() == MATCH_PARENT)
           {
@@ -244,6 +508,7 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
     index++;
   }
 
+  mTextWidthBudget = savedBudget;
   return flex;
 }
 } // namespace A2ui

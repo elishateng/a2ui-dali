@@ -20,9 +20,9 @@
 #include "render-style.h"
 #include <dali/integration-api/debug.h>
 #include <dali/public-api/events/touch-event.h>
-#include <dali-ui-foundation/public-api/image-view.h>
+#include <dali-ui-foundation/public-api/views/image/image-view.h>
 #include <dali-ui-foundation/public-api/layouts/flex-layout-params.h>
-#include <dali-ui-foundation/public-api/scroll-view.h>
+#include <dali-ui-foundation/public-api/views/scroll/scroll-view.h>
 #include <dali-ui-foundation/public-api/text/text-enumerations.h>
 #include <dali-ui-foundation/public-api/text/style/underline.h>
 #include <cstring>
@@ -32,7 +32,7 @@
 
 using namespace Dali;
 using namespace Dali::Ui;
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::TreeNode;
 
 namespace A2ui
 {
@@ -145,10 +145,13 @@ View A2uiRenderer::RenderComponent(const std::string& id,
   if(!comp)
   {
     DALI_LOG_ERROR("[A2UI] Renderer: Component '%s' not found\n", id.c_str());
-    return View::New()
-      .SetBackgroundColor(UiColor(0xFF0000))
-      .SetRequestedWidth(MATCH_PARENT)
-      .SetRequestedHeight(20.0f);
+    // dali-ui 2.5.26 dropped the fluent-chaining setters (they now return void),
+    // so configure the placeholder view via individual statements.
+    View placeholder = View::New();
+    placeholder.SetBackgroundColor(UiColor(0xFF0000));
+    placeholder.SetRequestedWidth(MATCH_PARENT);
+    placeholder.SetRequestedHeight(20.0f);
+    return placeholder;
   }
 
   const std::string& type = comp->type;

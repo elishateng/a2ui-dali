@@ -18,7 +18,7 @@
 
 #include "surface-components-model.h"
 #include "data-model.h"
-#include <dali-ui-foundation/devel-api/builder/json-parser.h>
+#include <dali-ui-foundation/integration-api/builder/json-parser.h>
 
 namespace A2ui
 {
@@ -33,9 +33,9 @@ class SurfaceModel
 public:
   void Create(const std::string& surfaceId, const std::string& catalogId);
 
-  void UpdateComponents(const Dali::Ui::TreeNode& componentsArray);
+  void UpdateComponents(const Dali::Ui::Integration::TreeNode& componentsArray);
 
-  void UpdateDataModel(const std::string& path, const Dali::Ui::TreeNode& value);
+  void UpdateDataModel(const std::string& path, const Dali::Ui::Integration::TreeNode& value);
 
   void Delete();
 
@@ -70,7 +70,7 @@ public:
    * Get the JsonParser instances used for component parsing.
    * We keep parsers alive so TreeNode pointers in ComponentModel remain valid.
    */
-  void KeepParser(Dali::Ui::JsonParser parser);
+  void KeepParser(Dali::Ui::Integration::JsonParser parser);
 
 private:
   std::string            mSurfaceId;
@@ -85,7 +85,7 @@ private:
   DataModel              mDataModel;
 
   // Keep parsers alive for TreeNode pointer lifetime
-  std::vector<Dali::Ui::JsonParser> mParsers;
+  std::vector<Dali::Ui::Integration::JsonParser> mParsers;
 };
 
 } // namespace A2ui

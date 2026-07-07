@@ -10,7 +10,7 @@
 
 namespace A2ui
 {
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::TreeNode;
 
 std::string RenderContext::ResolveString(const TreeNode* propNode) const
 {

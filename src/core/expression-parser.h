@@ -20,8 +20,8 @@
 #include <string>
 #include <functional>
 #include <unordered_map>
-#include <dali-ui-foundation/devel-api/builder/tree-node.h>
-#include <dali-ui-foundation/devel-api/builder/json-parser.h>
+#include <dali-ui-foundation/integration-api/builder/tree-node.h>
+#include <dali-ui-foundation/integration-api/builder/json-parser.h>
 
 namespace A2ui
 {
@@ -35,7 +35,7 @@ namespace A2ui
 class ExpressionParser
 {
 public:
-  using FunctionImpl = std::function<std::string(const Dali::Ui::TreeNode& args,
+  using FunctionImpl = std::function<std::string(const Dali::Ui::Integration::TreeNode& args,
                                                  const DataContext& ctx)>;
 
   ExpressionParser();
@@ -52,7 +52,7 @@ public:
    * @param ctx       Data context for resolving bound values
    * @return result string ("true"/"false" for validators, formatted string for formatters)
    */
-  std::string Evaluate(const Dali::Ui::TreeNode& callNode, const DataContext& ctx) const;
+  std::string Evaluate(const Dali::Ui::Integration::TreeNode& callNode, const DataContext& ctx) const;
 
   /**
    * Register a custom function.
@@ -64,13 +64,13 @@ private:
    * Resolve an argument value: if it's a {path:...} binding, resolve via DataContext;
    * if it's a literal, return its string value.
    */
-  static std::string ResolveArg(const Dali::Ui::TreeNode& args,
+  static std::string ResolveArg(const Dali::Ui::Integration::TreeNode& args,
                                 const char* key,
                                 const DataContext& ctx);
 
-  static std::string GetArgString(const Dali::Ui::TreeNode& args, const char* key);
-  static float       GetArgFloat(const Dali::Ui::TreeNode& args, const char* key, float fallback = 0.0f);
-  static int         GetArgInt(const Dali::Ui::TreeNode& args, const char* key, int fallback = 0);
+  static std::string GetArgString(const Dali::Ui::Integration::TreeNode& args, const char* key);
+  static float       GetArgFloat(const Dali::Ui::Integration::TreeNode& args, const char* key, float fallback = 0.0f);
+  static int         GetArgInt(const Dali::Ui::Integration::TreeNode& args, const char* key, int fallback = 0);
 
   /**
    * Interpolate a format string, resolving nested ${...} patterns inside-out.

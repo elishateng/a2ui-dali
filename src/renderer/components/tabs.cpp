@@ -26,8 +26,9 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
   tabHeader.SetDirection(FlexDirection::ROW);
   tabHeader.SetRequestedWidth(MATCH_PARENT);
   tabHeader.SetRequestedHeight(WRAP_CONTENT);
-  tabHeader.SetBorderlineWidth(Metrics::BorderInput());
-  tabHeader.SetBorderlineColor(A2uiTheme::Color("OutlineLow"));
+  // NO borderline here — SetBorderlineWidth draws a full BOX around the tab row (the web shows
+  // only a hairline UNDER the tabs). The bottom hairline is added as a separate full-width line
+  // below, and the active tab's underline bar sits on top of it.
 
   // Content area — only the active tab's content is parented here, so hidden tabs take no
   // vertical space (previously every tab's content was added and inflated the card height).
@@ -72,7 +73,7 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
     View underline = View::New();
     underline.SetRequestedWidth(WRAP_CONTENT);
     underline.SetRequestedHeight(Metrics::Dp(2));
-    underline.SetBackgroundColor(active ? COLOR_TEXT_DEFAULT : UiColor(0x00000000));
+    underline.SetBackgroundColor(active ? COLOR_TEXT_DEFAULT : UiColor(0.0f, 0.0f, 0.0f, 0.0f));
     underline.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::STRETCH));
     tabBtn.Add(underline);
 
@@ -97,7 +98,7 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
             bool sel = (j == i);
             tabLabels[j].SetTextColor(sel ? COLOR_TEXT_DEFAULT : COLOR_TEXT_MUTED);
             tabLabels[j].SetFontWeight(sel ? Text::FontWeight::SEMI_BOLD : Text::FontWeight::NORMAL);
-            tabUnderlines[j].SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : UiColor(0x00000000));
+            tabUnderlines[j].SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : UiColor(0.0f, 0.0f, 0.0f, 0.0f));
           }
           while(contentArea.GetChildCount() > 0) contentArea.Remove(contentArea.GetChildAt(0u));
           contentArea.Add(tabContentViews[i]);
@@ -109,6 +110,12 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
   }
 
   container.Add(tabHeader);
+  // Full-width bottom hairline under the tab row (the web tab bar's bottom border).
+  View headerLine = View::New();
+  headerLine.SetRequestedWidth(MATCH_PARENT);
+  headerLine.SetRequestedHeight(Metrics::BorderInput());
+  headerLine.SetBackgroundColor(A2uiTheme::Color("OutlineLow"));
+  container.Add(headerLine);
   container.Add(contentArea);
   return container;
 }

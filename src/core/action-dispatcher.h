@@ -19,7 +19,7 @@
 #include "data-context.h"
 #include <string>
 #include <functional>
-#include <dali-ui-foundation/devel-api/builder/tree-node.h>
+#include <dali-ui-foundation/integration-api/builder/tree-node.h>
 
 namespace A2ui
 {
@@ -46,16 +46,16 @@ public:
    * @param sourceComponentId  ID of the component that triggered the action
    * @param ctx  Data context for resolving bound values in action context
    */
-  void Dispatch(const Dali::Ui::TreeNode& actionNode,
+  void Dispatch(const Dali::Ui::Integration::TreeNode& actionNode,
                 const std::string& sourceComponentId,
                 const DataContext& ctx);
 
   bool GetSendDataModel() const { return mSendDataModel; }
 
 private:
-  std::string ResolveContextValue(const Dali::Ui::TreeNode& node,
+  std::string ResolveContextValue(const Dali::Ui::Integration::TreeNode& node,
                                   const DataContext& ctx) const;
-  std::string BuildContextJson(const Dali::Ui::TreeNode& contextNode,
+  std::string BuildContextJson(const Dali::Ui::Integration::TreeNode& contextNode,
                                const DataContext& ctx) const;
 
   std::string  mSurfaceId;

@@ -5,7 +5,7 @@
 
 #include "renderer/a2ui-theme.h"
 
-#include <dali-ui-foundation/public-api/ui-color-manager.h>
+#include <dali-ui-foundation/public-api/configuration/ui-color-manager.h>
 #include <dali/integration-api/debug.h>
 #include <unordered_map>
 #include <cstdlib>

@@ -41,10 +41,10 @@ struct RenderContext
   Dali::Ui::View RenderChild(const std::string& id) const { return renderChild(id); }
 
   // Resolve a component property that may be a literal or a {path}/{call} data binding.
-  std::string ResolveString(const Dali::Ui::TreeNode* propNode) const;
-  float       ResolveFloat(const Dali::Ui::TreeNode* propNode, float fallback = 0.0f) const;
+  std::string ResolveString(const Dali::Ui::Integration::TreeNode* propNode) const;
+  float       ResolveFloat(const Dali::Ui::Integration::TreeNode* propNode, float fallback = 0.0f) const;
   /// The resolved data-model path a {path} binding points at (empty if not a binding).
-  std::string GetBoundPath(const Dali::Ui::TreeNode* propNode) const;
+  std::string GetBoundPath(const Dali::Ui::Integration::TreeNode* propNode) const;
 };
 
 } // namespace A2ui

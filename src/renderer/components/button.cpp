@@ -16,11 +16,12 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
   // Single FlexLayout — the previous nested (borderWrap + button) structure
   // collapsed to zero under DALi's column-align:stretch when the child label
   // was WRAP_CONTENT. Fixed size + a single container avoids that entirely.
-  const float kBtnHeight = Metrics::ButtonHeight();       // 40 (dp-scaled)
+  const float kBtnHeight = Metrics::ButtonHeight();       // 40 (dp-scaled pill)
   const float kBtnMinWidth = Metrics::ButtonMinWidth();   // 140
   const float kCharWidth14pt = Metrics::ButtonCharWidth();// glyph advance at the button font
   const float kLabelPadding = Metrics::ButtonLabelPad();  // cushion each side inside the button
-  const uint16_t kPadX = static_cast<uint16_t>(Metrics::Dp(16));
+  const float    kPadXf = Metrics::Dp(12);   // horizontal padding each side (web ≈ 12px)
+  const uint16_t kPadX = static_cast<uint16_t>(kPadXf);
   const uint16_t kPadY = static_cast<uint16_t>(Metrics::Dp(8));
 
   FlexLayout button = FlexLayout::New();
@@ -43,7 +44,7 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
   bool outlined = true;
   if(isBorderless)
   {
-    bgColor = UiColor(0x00000000);
+    bgColor = UiColor(0.0f, 0.0f, 0.0f, 0.0f);
     outlined = false;
   }
   button.SetBackgroundColor(bgColor);
@@ -61,7 +62,7 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
     if(labelChild)
     {
       labelChild.SetTextColor(fgColor);
-      labelChild.SetFontWeight(Text::FontWeight::MEDIUM);
+      labelChild.SetFontWeight(Text::FontWeight::SEMI_BOLD);  // web button labels read semibold (5-agent consensus)
       labelChild.SetFontSize(Metrics::FontButton());
       labelChild.SetHorizontalTextAlignment(Text::Alignment::CENTER);
       // Grow the label box to fit the full glyph run so text like "Submit
@@ -91,8 +92,31 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
         // large MinimumWidth) so e.g. "Sign up" stays snug instead of a wide pill.
         float labelWidth = static_cast<float>(byteLen) * kCharWidth14pt + kLabelPadding * 2.0f;
         labelChild.SetRequestedWidth(labelWidth);
-        btnWidth = std::max(Metrics::Dp(72), labelWidth + Metrics::Dp(32));
+        // The button MUST be the label box + its OWN left/right padding, or the padding eats into
+        // the label's content area and clips the text (a semibold "Purchase" → "Purcha…"; the
+        // previous +Dp(16) was only HALF the 2×Dp(12) padding). 2×kPadXf fits the label exactly;
+        // floor 64dp keeps tiny labels a sane pill width.
+        btnWidth = std::max(Metrics::Dp(64), labelWidth + 2.0f * kPadXf);
       }  // dp padding each side
+    }
+    else
+    {
+      // Icon-only button (e.g. a music-player prev/play/next transport control): the web
+      // draws these as a COMPACT borderless circular tap target, not a 140dp outlined pill.
+      btnWidth = kBtnHeight;
+      button.SetBackgroundColor(UiColor(0.0f, 0.0f, 0.0f, 0.0f));
+      button.SetBorderlineWidth(0.0f);
+      // The icon is an ACTION control, not an inline decorative glyph — override the icon's
+      // muted default to the button's dark foreground and enlarge it (the web transport
+      // glyphs are ~24px dark, not a faint 18px grey mark). Without this the prev/play/next
+      // controls render as barely-visible specks.
+      ImageView iconChild = ImageView::DownCast(childView);
+      if(iconChild)
+      {
+        iconChild.SetImageColor(fgColor);
+        iconChild.SetRequestedWidth(Metrics::Dp(24));
+        iconChild.SetRequestedHeight(Metrics::Dp(24));
+      }
     }
     button.Add(childView);
   }

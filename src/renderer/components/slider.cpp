@@ -77,7 +77,12 @@ View A2uiRenderer::RenderSlider(const ComponentModel& comp, DataContext& ctx)
   trackRow.Add(thumb);
   trackRow.Add(emptyTrack);
 
-  container.Add(valueLabel);
+  // The numeric value caption ("0.45") is OFF by default — the web slider is a bare track
+  // (a music progress bar shows times in a separate row, not on the slider). Only show it when
+  // the message opts in via showValue:true.
+  const TreeNode* svNode = comp.rawNode ? comp.rawNode->Find("showValue") : nullptr;
+  bool showValue = svNode && svNode->GetType() == TreeNode::BOOLEAN && svNode->GetBoolean();
+  if(showValue) container.Add(valueLabel);
   container.Add(trackRow);
 
   // Reactive: update the value label and the fill/empty split when the bound value changes.

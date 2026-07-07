@@ -24,8 +24,8 @@
 #include <cerrno>
 #include <algorithm>
 
-using Dali::Ui::JsonParser;
-using Dali::Ui::TreeNode;
+using Dali::Ui::Integration::JsonParser;
+using Dali::Ui::Integration::TreeNode;
 
 namespace A2ui
 {

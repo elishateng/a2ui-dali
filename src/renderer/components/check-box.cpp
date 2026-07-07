@@ -44,14 +44,15 @@ View A2uiRenderer::RenderCheckBox(const ComponentModel& comp, DataContext& ctx)
   // Click toggle
   if(!boundPath.empty())
   {
-    row.AsInteractive([this, boundPath, ctx](InteractiveTrait& trait) mutable {
-      trait.ClickedSignal().Connect(this,
-        [boundPath, ctx](View, const InputEvent&) mutable -> bool {
-          bool current = ctx.GetDataModel().GetBool(boundPath, false);
-          ctx.GetDataModel().SetBoolValue(boundPath, !current);
-          return true;
-        });
-    });
+    // dali-ui 2.5.26: AsInteractive() now returns the InteractiveTrait directly
+    // (no lambda configurator). Attach the click handler to the returned trait.
+    InteractiveTrait trait = row.AsInteractive();
+    trait.ClickedSignal().Connect(this,
+      [boundPath, ctx](View, const InputEvent&) mutable -> bool {
+        bool current = ctx.GetDataModel().GetBool(boundPath, false);
+        ctx.GetDataModel().SetBoolValue(boundPath, !current);
+        return true;
+      });
 
     // Watch for data changes → update icon
     ctx.GetDataModel().Watch(boundPath,

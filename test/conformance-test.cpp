@@ -31,7 +31,7 @@
 #include "../src/core/a2ui-message-processor.h"
 #include "../src/core/surface-model.h"
 
-#include <dali-ui-foundation/devel-api/builder/json-parser.h>
+#include <dali-ui-foundation/integration-api/builder/json-parser.h>
 #include <fstream>
 #include <sstream>
 #include <iostream>

@@ -56,7 +56,7 @@ public:
   std::string GetString(const std::string& path) const;
   float       GetFloat(const std::string& path, float fallback = 0.0f) const;
   bool        GetBool(const std::string& path, bool fallback = false) const;
-  const Dali::Ui::TreeNode* ResolvePath(const std::string& path) const;
+  const Dali::Ui::Integration::TreeNode* ResolvePath(const std::string& path) const;
 
   // Data mutation (delegates to DataModel with resolved paths)
   bool SetValue(const std::string& path, const std::string& value);
