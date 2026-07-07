@@ -5,6 +5,48 @@ All notable changes to **a2ui-dali** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] — 2026-07-07
+
+Ports the renderer to the reorganized **DALi UI 2.5.28** API and folds in the web-composer
+parity refinements developed against 0.10.0. No a2ui-dali public API changes.
+
+### Changed
+
+- **Build against DALi UI 2.5.28** (with `dali2-core` / `dali2-adaptor` 2.5.29). dali-ui
+  2.5.28 reorganized its headers into category directories and moved the JSON builder out of
+  `devel-api`, so the renderer's includes and type references are updated:
+  - Builder headers `dali-ui-foundation/devel-api/builder/{tree-node,json-parser}.h` →
+    `integration-api/builder/…`, and their types `Dali::Ui::{TreeNode,JsonParser}` →
+    `Dali::Ui::Integration::…`.
+  - View/text headers moved under `public-api/{views,types,configuration}/…`
+    (`image-view`, `label`, `scroll-view`, `unit`, `ui-color-manager`).
+  - `Label::SetUnderline` → `SetTextUnderline`; the fluent-chaining view setters (now
+    returning `void`) and `View::AsInteractive()` (now returning the `InteractiveTrait`) are
+    called in their non-chained forms.
+
+  Rendered output is preserved — the gallery corpus renders structurally identically to
+  0.10.0, with only sub-pixel text-antialiasing / image-resampling differences from the
+  newer DALi text and render pipeline.
+- **Closer parity with the A2UI web composer.** Refined the shared design metrics and
+  per-component rendering — glyph-weighted text-width measurement, flex-container
+  sizing/spacing, responsive image fitting, and button/chip/card/list details — with no
+  per-card special casing.
+
+### Fixed
+
+- **Icons rendered at half size.** Icon size was applied as a raw logical value instead of
+  the shared dp scale, so inline and header glyphs appeared as faint specks; icons now
+  dp-scale like every other component and default to the muted secondary colour to match the
+  web's light Material outline glyphs.
+
+### Compatibility
+
+- Built against **`dali-ui` `v2.5.28.10837`** with **`dali2-core` / `dali2-adaptor`
+  `dali_2.5.29`** on the desktop `dali-env` build. dali-ui trails core/adaptor by one minor
+  version, so pair dali-ui 2.5.28 with core/adaptor 2.5.29. a2ui-dali tracks the `dali-ui`
+  API, so check out the `dali-ui` revision matching your target's DALi version. Source
+  `setenv` from your `dali-env` before building. Conformance: 68/68.
+
 ## [0.10.0] — 2026-07-01
 
 Adds a Tizen build path and brings the desktop render output into parity with the A2UI
@@ -136,5 +178,6 @@ before 1.0.
   slots). `dali-ui` UI/visual APIs change frequently; track a `dali-ui` revision from the
   same period. Source `setenv` from your `dali-env` before building.
 
+[0.11.0]: https://github.com/dalihub/a2ui-dali/releases/tag/v0.11.0
 [0.10.0]: https://github.com/dalihub/a2ui-dali/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dalihub/a2ui-dali/releases/tag/v0.9.0
