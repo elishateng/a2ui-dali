@@ -471,15 +471,21 @@ View A2uiRenderer::RenderFlexContainer(const ComponentModel& comp,
           }
           else if(childType == "Image")
           {
-            // A responsive image is MATCH_PARENT (fill container up to its declared
-            // max-width). On a Row's MAIN axis the layout engine forces MATCH_PARENT
-            // children to the full width, squeezing siblings — so pin the image to its
-            // declared width (stashed as MaximumWidth). Default-sized row images were
-            // already built thumbnail-small by the hint above, so this pins that too.
+            // A responsive image is MATCH_PARENT (fill container up to its declared max-width). On a
+            // Row's MAIN axis the layout engine forces MATCH_PARENT children to the full width,
+            // squeezing siblings — so pin the image to its declared width (stashed as MaximumWidth).
+            // Default-sized row images were already built thumbnail-small by the hint above.
+            // RequestedWidth alone is NOT honoured for a nested-flex child (a DATA-BOUND image returns
+            // a FlexLayout container): its main-axis slot stays responsive and shrinks below the drawn
+            // image at narrow (phone) widths, so a sibling text Column overlaps it (podcast/purchase
+            // Row[image,text]). A definite flex-basis + grow/shrink 0 pins the slot for both forms.
             float declared = child.GetMaximumWidth();
             if(declared > 0.0f && declared < 100000.0f)
             {
               child.SetRequestedWidth(declared);
+              child.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER)
+                                      .SetFlexGrow(0.0f).SetFlexShrink(0.0f).SetFlexBasis(declared));
+              pinned = true;
             }
           }
           else if(childType == "Icon")
