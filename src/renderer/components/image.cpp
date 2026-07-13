@@ -211,6 +211,12 @@ View A2uiRenderer::RenderImage(const ComponentModel& comp, DataContext& ctx)
     container.SetJustifyContent(FlexJustify::CENTER);
     container.SetRequestedWidth((isHeader || fullWidth) ? MATCH_PARENT : w);
     container.SetRequestedHeight(fullWidth ? fullWidthHeight(resolvePath(url)) : h);
+    // Carry the fixed width as MaximumWidth too (mirrors the literal-url ImageView): a Row pins its
+    // image slot from GetMaximumWidth(), and a bound image returns THIS container — without it the
+    // slot stays responsive and a sibling text Column overlaps it at narrow widths. Guard w>0 like the
+    // literal path (line ~189): mediumFeature passes w=MATCH_PARENT (negative), and a negative
+    // MaximumWidth clamps the container to a negative width and collapses it.
+    if(!isHeader && !fullWidth && w > 0.0f) container.SetMaximumWidth(w);
     if(!isHeader && !fullWidth) container.SetLayoutParams(FlexLayoutParams::New().SetAlignSelf(FlexAlign::CENTER));
     container.Add(buildView(resolvePath(url)));
     bool capFull = fullWidth;
