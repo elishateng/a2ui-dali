@@ -95,6 +95,12 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
     label.SetRequestedHeight(dataBound ? lineH : WRAP_CONTENT);
   }
 
+  label.LayoutFinishedSignal().Connect(this, [this](View view, LayoutRect rect) {
+    Label label = Label::DownCast(view);
+    float lineH = Metrics::LineHeight(label.GetFontSize());
+    label.SetRequestedHeight(lineH * label.GetLineCount(label.GetSize().width));
+  });
+
   // Caption/body color hints
   if(strcmp(variant, "caption") == 0)
   {
