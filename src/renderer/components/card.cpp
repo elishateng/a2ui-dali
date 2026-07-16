@@ -107,6 +107,11 @@ View A2uiRenderer::RenderCard(const ComponentModel& comp,
         mActionDispatcher.Dispatch(*actionNode, sourceId, capturedCtx);
       });
     mTapDetectors.push_back(detector);
+
+    // TV remote: a clickable card is a focus target too; OK/Enter runs the same action.
+    EnableKeyActivation(card, [this, actionNode, sourceId, capturedCtx]() {
+      mActionDispatcher.Dispatch(*actionNode, sourceId, capturedCtx);
+    });
   }
 
   return card;

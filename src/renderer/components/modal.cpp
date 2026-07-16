@@ -49,14 +49,19 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
   closeRow.Add(closeLabel);
   {
     // Close → hide AND re-collapse to zero height (so the hidden overlay reserves no space).
+    // One lambda drives both touch and the remote OK key.
+    auto closeModal = [modalCard]() mutable {
+      modalCard.SetProperty(Actor::Property::VISIBLE, false);
+      modalCard.SetRequestedHeight(0.0f);
+    };
     Dali::TapGestureDetector closeDet = Dali::TapGestureDetector::New();
     closeDet.Attach(closeRow);
     closeDet.DetectedSignal().Connect(this,
-      [modalCard](Dali::Actor, const Dali::TapGesture&) mutable {
-        modalCard.SetProperty(Actor::Property::VISIBLE, false);
-        modalCard.SetRequestedHeight(0.0f);
-      });
+      [closeModal](Dali::Actor, const Dali::TapGesture&) mutable { closeModal(); });
     mTapDetectors.push_back(closeDet);
+
+    // TV remote: the close (X) row is a focus target; OK/Enter closes the modal.
+    EnableKeyActivation(closeRow, [closeModal]() mutable { closeModal(); });
   }
   modalCard.Add(closeRow);
 
@@ -81,14 +86,19 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
     View triggerView = mDiffEngine.GetView(triggerNode->GetString());
     if(triggerView)
     {
+      // One lambda drives both touch and the remote OK key.
+      auto openModal = [modalCard]() mutable {
+        modalCard.SetProperty(Actor::Property::VISIBLE, true);
+        modalCard.SetRequestedHeight(WRAP_CONTENT);
+      };
       Dali::TapGestureDetector openDet = Dali::TapGestureDetector::New();
       openDet.Attach(triggerView);
       openDet.DetectedSignal().Connect(this,
-        [modalCard](Dali::Actor, const Dali::TapGesture&) mutable {
-          modalCard.SetProperty(Actor::Property::VISIBLE, true);
-          modalCard.SetRequestedHeight(WRAP_CONTENT);
-        });
+        [openModal](Dali::Actor, const Dali::TapGesture&) mutable { openModal(); });
       mTapDetectors.push_back(openDet);
+
+      // TV remote: focus the trigger; OK/Enter opens the modal.
+      EnableKeyActivation(triggerView, [openModal]() mutable { openModal(); });
     }
   }
 

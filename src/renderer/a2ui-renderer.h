@@ -25,6 +25,7 @@
 #include "component-registry.h"
 #include <dali-ui-foundation/dali-ui-foundation.h>
 #include <dali/public-api/events/tap-gesture-detector.h>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -119,6 +120,15 @@ private:
                               const SurfaceComponentsModel& components,
                               DataContext& ctx, Dali::Ui::View outContainer,
                               bool isRow, float gap);
+
+  // === Remote / keyboard focus ===
+  /// Make @p view reachable by the TV remote: mark it keyboard-focusable so the
+  /// FocusManager can move focus onto it, and run @p onActivate when the focused
+  /// view receives the remote's OK/Enter key. Touch activation stays on the
+  /// component's own TapGestureDetector — this only adds the key path so both
+  /// inputs trigger the same action, keeping the two in sync from one place. The
+  /// renderer is a ConnectionTracker, so the key handler is released with it.
+  void EnableKeyActivation(Dali::Ui::View view, std::function<void()> onActivate);
 
   // === Checks validation ===
   void SetupChecks(const ComponentModel& comp, DataContext& ctx,
