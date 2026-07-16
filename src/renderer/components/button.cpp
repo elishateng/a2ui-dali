@@ -146,6 +146,11 @@ View A2uiRenderer::RenderButton(const ComponentModel& comp,
           mActionDispatcher.Dispatch(*actionNode, compId, capturedCtx);
         });
       mTapDetectors.push_back(detector);
+
+      // TV remote: make the button focusable and dispatch the same action on OK/Enter.
+      EnableKeyActivation(button, [this, actionNode, compId, capturedCtx]() {
+        mActionDispatcher.Dispatch(*actionNode, compId, capturedCtx);
+      });
     }
   }
 

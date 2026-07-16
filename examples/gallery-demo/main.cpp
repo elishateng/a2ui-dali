@@ -75,6 +75,9 @@ private:
     mHost.SetOnBeginRenderingSurface([this](const std::string&, View root) {
       while(mContent.GetChildCount() > 0) mContent.Remove(mContent.GetChildAt(0u));
       mContent.Add(root);
+      // Give the TV remote a starting point: focus the surface's first focusable view.
+      // (Screen paging still works via Space; arrow keys now also move focus between views.)
+      FocusManager::Get().RequestFocus(root);
     });
     mHost.SetOnUserAction([](const std::string& surfaceId, const std::string& json) {
       std::printf("[a2ui-dali] action surface=%s %s\n", surfaceId.c_str(), json.c_str());

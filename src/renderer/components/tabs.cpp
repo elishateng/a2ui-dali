@@ -86,24 +86,31 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
     tabContentViews.push_back(tabContent);
     if(active) contentArea.Add(tabContent);
 
-    // Tap target spans the whole tab button.
+    // Selecting this tab: highlight its label + underline, mute the others, and swap the
+    // content area to this tab's child. One lambda drives both touch (tap) and the remote
+    // OK key so the two paths can never diverge.
     {
       int i = tabIndex;
+      auto selectTab = [i, contentArea, tabLabels, tabUnderlines, tabContentViews]() mutable {
+        for(int j = 0; j < static_cast<int>(tabLabels.size()); ++j)
+        {
+          bool sel = (j == i);
+          tabLabels[j].SetTextColor(sel ? COLOR_TEXT_DEFAULT : COLOR_TEXT_MUTED);
+          tabLabels[j].SetFontWeight(sel ? Text::FontWeight::SEMI_BOLD : Text::FontWeight::NORMAL);
+          tabUnderlines[j].SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : UiColor(0.0f, 0.0f, 0.0f, 0.0f));
+        }
+        while(contentArea.GetChildCount() > 0) contentArea.Remove(contentArea.GetChildAt(0u));
+        contentArea.Add(tabContentViews[i]);
+      };
+
       Dali::TapGestureDetector det = Dali::TapGestureDetector::New();
       det.Attach(tabBtn);
       det.DetectedSignal().Connect(this,
-        [i, contentArea, tabLabels, tabUnderlines, tabContentViews](Dali::Actor, const Dali::TapGesture&) mutable {
-          for(int j = 0; j < static_cast<int>(tabLabels.size()); ++j)
-          {
-            bool sel = (j == i);
-            tabLabels[j].SetTextColor(sel ? COLOR_TEXT_DEFAULT : COLOR_TEXT_MUTED);
-            tabLabels[j].SetFontWeight(sel ? Text::FontWeight::SEMI_BOLD : Text::FontWeight::NORMAL);
-            tabUnderlines[j].SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : UiColor(0.0f, 0.0f, 0.0f, 0.0f));
-          }
-          while(contentArea.GetChildCount() > 0) contentArea.Remove(contentArea.GetChildAt(0u));
-          contentArea.Add(tabContentViews[i]);
-        });
+        [selectTab](Dali::Actor, const Dali::TapGesture&) mutable { selectTab(); });
       mTapDetectors.push_back(det);
+
+      // TV remote: focus the tab button; OK/Enter selects it.
+      EnableKeyActivation(tabBtn, [selectTab]() mutable { selectTab(); });
     }
 
     tabIndex++;

@@ -112,8 +112,12 @@ private:
     mHost.GetRenderer().SetImageDir("res/");
 
     // The host hands back each surface's rooted view; the app adds it under the section.
+    // Setting the initial focus is the host app's job (the renderer only marks which views
+    // are focusable): move focus onto the surface's first focusable view so a TV remote has
+    // a starting point. RequestFocus delegates to a focusable descendant (child-first).
     mHost.SetOnBeginRenderingSurface([section](const std::string&, Dali::Ui::View view) mutable {
       section.Add(view);
+      Dali::Ui::FocusManager::Get().RequestFocus(view);
     });
     mHost.SetOnUserAction([](const std::string& surfaceId, const std::string& json) {
       std::printf("[a2ui-dali] action surface=%s %s\n", surfaceId.c_str(), json.c_str());

@@ -19,6 +19,7 @@
 #include "a2ui-metrics.h"
 #include "render-style.h"
 #include <dali/integration-api/debug.h>
+#include <dali/public-api/events/key-event.h>
 #include <dali/public-api/events/touch-event.h>
 #include <dali-ui-foundation/public-api/views/image/image-view.h>
 #include <dali-ui-foundation/public-api/layouts/flex-layout-params.h>
@@ -50,12 +51,40 @@ namespace
 // surrounding Card act as a secondary hit target keeps the "Book Now"
 // affordance functional from anywhere on the item.
 
+// The remote / keyboard keys that count as "activate the focused item" (the TV
+// remote's centre OK button and its keyboard equivalents). Kept in one place so
+// every interactive component recognises the same set. "Return" is what the OK
+// button reports on Tizen; the others cover keyboards and keypad Enter.
+bool IsActivationKey(const std::string& keyName)
+{
+  return keyName == "Return" || keyName == "KP_Enter" ||
+         keyName == "Select" || keyName == "Enter";
+}
 
 } // anonymous namespace
 
 A2uiRenderer::A2uiRenderer()
 {
   RegisterStandardCatalog();
+}
+
+void A2uiRenderer::EnableKeyActivation(View view, std::function<void()> onActivate)
+{
+  if(!view) return;
+
+  // Focusable so the FocusManager can land the remote's focus highlight on it; the
+  // OK/Enter key then runs the same action as a tap. Directional navigation between
+  // focusable views and the highlight itself are handled by the FocusManager.
+  view.SetFocusable(true);
+  view.KeyEventSignal().Connect(this,
+    [onActivate](View /*view*/, const Dali::KeyEvent& key) -> bool {
+      if(key.GetState() == Dali::KeyEvent::DOWN && IsActivationKey(key.GetKeyName().CStr()))
+      {
+        onActivate();
+        return true;  // consumed
+      }
+      return false;   // let other keys (e.g. arrows) reach the FocusManager
+    });
 }
 
 // Register the standard A2UI catalog: one entry per built-in component type → its
