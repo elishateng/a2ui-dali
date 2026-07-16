@@ -35,6 +35,9 @@ DALi itself.
   JSONL, or a single object.
 - **Full v0.9 catalog** — layout, text, media, inputs, lists, tabs, and a modal, with
   two-way data binding, expression/template evaluation, and form validation (`checks`).
+- **Touch and TV remote** — interactive views are keyboard-focusable, so DALi's
+  `FocusManager` navigates between them with a D-pad and the **OK/Enter** key activates the
+  focused one, alongside touch (the host sets the initial focus).
 - **Themable** — colors resolve through semantic tokens and dimensions use
   density-independent `dp` units, so output tracks the platform theme.
 - **Distributable** — installs a static library, public headers, and a `pkg-config` file.

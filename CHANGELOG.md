@@ -5,6 +5,35 @@ All notable changes to **a2ui-dali** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2026-07-16
+
+Adds TV remote / D-pad focus support and folds in three rendering fixes. No a2ui-dali
+public API changes; still builds against **DALi UI 2.5.28** (`dali2-core` / `dali2-adaptor`
+2.5.29).
+
+### Added
+
+- **TV remote / D-pad focus.** Interactive views — Button, clickable Card, Tabs (tab
+  buttons), and Modal open/close controls — are now keyboard-focusable, so DALi's
+  `FocusManager` moves focus between them and draws the focus highlight, and the remote
+  **OK/Enter** key runs the same action as a tap. Touch stays on each component's existing
+  `TapGestureDetector`; a single `EnableKeyActivation` helper wires the key path beside it so
+  the tap and key handlers cannot diverge and no interactive component is missed. The example
+  hosts set the initial focus (`FocusManager::RequestFocus`) after a surface renders.
+  Verified on a Tizen 11 emulator: focus navigation on both axes, OK-key activation, and
+  switching Tabs by remote.
+
+### Fixed
+
+- **Label height collapsed or hid data-bound text.** Label height is now derived from the
+  real line count, so text that arrives after the initial layout is no longer collapsed or
+  clipped.
+- **`pause.png` / `playPause.png` duplicated `play.png`.** The media-player pause and
+  play/pause icons shipped as copies of the play glyph; they now carry the correct artwork
+  (issue #5).
+- **Row image/text overlap at narrow widths.** A data-bound Row image slot is pinned so a
+  sibling text no longer overlaps it when the row is narrow.
+
 ## [0.11.0] — 2026-07-07
 
 Ports the renderer to the reorganized **DALi UI 2.5.28** API and folds in the web-composer
