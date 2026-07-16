@@ -57,6 +57,23 @@ def collect_corpus_names():
     return names
 
 
+# Explicit built-in glyphs for media-control icons whose reference SVGs were wrong — both
+# pause and playPause once shipped as byte-for-byte copies of play.png (issue #5). Defining
+# them inline (classic filled Material style, matching play/next/previous/fastForward) makes
+# res/icons/pause.png and res/icons/playPause.png regenerate as correct, distinct glyphs
+# regardless of what REF_ICON_DIR contains. These take priority over every other source.
+BUILTIN_SVG = {
+    # classic filled Material "pause" — two solid bars
+    "pause": '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24"'
+             ' width="24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>',
+    # play triangle + pause bars combined (no single Material asset exists for this name);
+    # bar width ≈ inter-bar gap so the bars echo the standalone pause icon's weight
+    "playPause": '<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960"'
+                 ' width="24"><path d="M165-312v-336l240 168-240 168Zm330 0v-320h100v320h-100Z'
+                 'm200 0v-320h100v320h-100Z"/></svg>',
+}
+
+
 def rasterize_white(svg_bytes, dst):
     png = cairosvg.svg2png(bytestring=svg_bytes, output_width=SIZE, output_height=SIZE)
     im = Image.open(io.BytesIO(png)).convert("RGBA")
@@ -70,9 +87,17 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     done, fail = set(), []
 
+    # 0. built-in glyphs (highest priority — never overwritten by a wrong reference SVG)
+    for name, svg in BUILTIN_SVG.items():
+        rasterize_white(svg.encode(), os.path.join(OUT, name + ".png"))
+        done.add(name)
+    print(f"[0] built-in glyphs: {sorted(BUILTIN_SVG)}")
+
     # 1. reference parity set (camelCase)
     for svg in glob.glob(os.path.join(REF_ICON_DIR, "*.svg")) if REF_ICON_DIR else []:
         name = os.path.splitext(os.path.basename(svg))[0]
+        if name in done:
+            continue
         try:
             rasterize_white(open(svg, "rb").read(), os.path.join(OUT, name + ".png"))
             done.add(name)
