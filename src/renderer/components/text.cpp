@@ -36,6 +36,25 @@ std::string StripMarkdown(const std::string& in)
   }
   return out;
 }
+
+// Size a Label to its REAL wrapped line count at content width `width`, replacing the
+// pre-layout character estimate once the true geometry (or a newly-arrived bound value) is
+// known. Guarded twice, per the View::LayoutFinishedSignal contract:
+//   (1) skip while the text has no laid-out lines yet (empty, or a data-bound value that has
+//       not arrived) so we never collapse the one-line slot RenderText reserved for it — the
+//       raw `lineH * GetLineCount()` would resolve to 0 and hide the row;
+//   (2) only write the height when it actually differs, so re-running this inside the settle
+//       signal cannot spin the endless dirty->settled->emit loop the API warns about.
+void FitLabelHeightToLines(Label label, float width)
+{
+  if(width <= 0.0f) return;                 // not laid out yet — the reserved height stands
+  int lines = label.GetLineCount(width);
+  if(lines < 1) return;                     // empty text — keep the reserved slot, don't collapse
+  float target = Metrics::LineHeight(label.GetFontSize()) * lines;
+  float diff   = label.GetRequestedHeight() - target;
+  if(diff < 0.0f) diff = -diff;
+  if(diff > 0.5f) label.SetRequestedHeight(target);
+}
 } // namespace
 
 View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
@@ -94,6 +113,14 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
     bool dataBound = textNode && textNode->GetType() == TreeNode::OBJECT;
     label.SetRequestedHeight(dataBound ? lineH : WRAP_CONTENT);
   }
+
+  // Once layout settles, correct the height to the real wrapped line count (the estimate above
+  // is only a first-paint reservation). Use the arranged width the signal hands us; the guards
+  // live in FitLabelHeightToLines so an empty slot is never collapsed and the settle loop never
+  // spins.
+  label.LayoutFinishedSignal().Connect(this, [](View view, LayoutRect rect) {
+    FitLabelHeightToLines(Label::DownCast(view), rect.width);
+  });
 
   // Caption/body color hints
   if(strcmp(variant, "caption") == 0)
@@ -177,7 +204,19 @@ View A2uiRenderer::RenderText(const ComponentModel& comp, DataContext& ctx)
       ctx.GetDataModel().Watch(boundPath, [label](const std::string&, const std::string& val) mutable {
         // Strip markdown on update too, matching the initial paint (a streamed value may
         // carry **bold** / "# " markers that would otherwise render literally).
-        label.SetText(Dali::String(StripMarkdown(val).c_str()));
+        std::string shown = StripMarkdown(val);
+        label.SetText(Dali::String(shown.c_str()));
+        // The multi-line / wrap decision was made at first paint from the (usually empty)
+        // initial value, so a data-bound label is single-line by default. Recompute it from the
+        // arrived value so a multi-word streamed value actually wraps — while a single unbroken
+        // token (a number/currency cell) still stays on one line, matching the initial-paint rule.
+        label.SetMultiLine(shown.find(' ') != std::string::npos);
+        // A value arriving AFTER the first layout settled cannot rely on LayoutFinishedSignal:
+        // SetText only re-runs measure when the height is WRAP_CONTENT, but this label's height
+        // is pinned to a concrete value, so the signal never re-fires and the row would keep its
+        // reserved (or collapsed) height, clipping/hiding the streamed text. Re-fit here — the
+        // height change itself invalidates measure and re-arranges the label at full height.
+        FitLabelHeightToLines(label, label.GetSize().width);
       });
     }
   }
