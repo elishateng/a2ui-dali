@@ -196,19 +196,6 @@ View A2uiRenderer::RenderChoicePicker(const ComponentModel& comp, DataContext& c
       });
   }
 
-  // Chips picker WITH a label: stack the label above the wrapping chip row in an outer Column so
-  // it lines up with the other form fields' labels (e.g. the invitation builder "Location").
-  if(chips && headerLabel)
-  {
-    FlexLayout outer = FlexLayout::New();
-    outer.SetDirection(FlexDirection::COLUMN);
-    outer.SetRequestedWidth(MATCH_PARENT);
-    outer.SetRequestedHeight(WRAP_CONTENT);
-    outer.Add(headerLabel);
-    outer.Add(container);
-    return outer;
-  }
-
   return container;
 }
 } // namespace A2ui
