@@ -131,6 +131,7 @@ View A2uiRenderer::RenderList(const ComponentModel& comp,
 
           View itemView = RenderComponent(tmplId, components, childCtx);
           sizeItemMainAxis(itemView);
+          itemView.SetFocusable(true);
           if(gap > 0.0f && itemIndex > 0)
           {
             uint16_t g = static_cast<uint16_t>(gap);

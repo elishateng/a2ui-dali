@@ -57,6 +57,15 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
         modalCard.SetRequestedHeight(0.0f);
       });
     mTapDetectors.push_back(closeDet);
+
+    closeRow.KeyEventSignal().Connect(this, [modalCard](Dali::Actor, const Dali::KeyEvent& key) mutable {
+        if(key.GetState() == Dali::KeyEvent::DOWN && key.GetKeyName() == "Return") {
+          modalCard.SetProperty(Actor::Property::VISIBLE, false);
+          modalCard.SetRequestedHeight(0.0f);
+          return true;
+        }
+        return false;
+      });
   }
   modalCard.Add(closeRow);
 
@@ -89,6 +98,15 @@ View A2uiRenderer::RenderModal(const ComponentModel& comp,
           modalCard.SetRequestedHeight(WRAP_CONTENT);
         });
       mTapDetectors.push_back(openDet);
+
+      triggerView.KeyEventSignal().Connect(this, [modalCard](Dali::Actor, const Dali::KeyEvent& key) mutable {
+        if(key.GetState() == Dali::KeyEvent::DOWN && key.GetKeyName() == "Return") {
+          modalCard.SetProperty(Actor::Property::VISIBLE, true);
+          modalCard.SetRequestedHeight(WRAP_CONTENT);
+          return true;
+        }
+        return false;
+      });
     }
   }
 

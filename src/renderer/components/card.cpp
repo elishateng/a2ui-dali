@@ -107,6 +107,14 @@ View A2uiRenderer::RenderCard(const ComponentModel& comp,
         mActionDispatcher.Dispatch(*actionNode, sourceId, capturedCtx);
       });
     mTapDetectors.push_back(detector);
+
+    card.KeyEventSignal().Connect(this, [this, actionNode, sourceId, capturedCtx](Dali::Actor, const Dali::KeyEvent& key) mutable {
+        if(key.GetState() == Dali::KeyEvent::DOWN && key.GetKeyName() == "Return") {
+          mActionDispatcher.Dispatch(*actionNode, sourceId, capturedCtx);
+          return true;
+        }
+        return false;
+      });
   }
 
   return card;

@@ -104,6 +104,22 @@ View A2uiRenderer::RenderTabs(const ComponentModel& comp,
           contentArea.Add(tabContentViews[i]);
         });
       mTapDetectors.push_back(det);
+
+      tabBtn.KeyEventSignal().Connect(this, [i, contentArea, tabLabels, tabUnderlines, tabContentViews](Dali::Actor, const Dali::KeyEvent& key) mutable {
+        if(key.GetState() == Dali::KeyEvent::DOWN && key.GetKeyName() == "Return") {
+          for(int j = 0; j < static_cast<int>(tabLabels.size()); ++j)
+          {
+            bool sel = (j == i);
+            tabLabels[j].SetTextColor(sel ? COLOR_TEXT_DEFAULT : COLOR_TEXT_MUTED);
+            tabLabels[j].SetFontWeight(sel ? Text::FontWeight::SEMI_BOLD : Text::FontWeight::NORMAL);
+            tabUnderlines[j].SetBackgroundColor(sel ? COLOR_TEXT_DEFAULT : UiColor(0x00000000));
+          }
+          while(contentArea.GetChildCount() > 0) contentArea.Remove(contentArea.GetChildAt(0u));
+          contentArea.Add(tabContentViews[i]);
+          return true;
+        }
+        return false;
+      });
     }
 
     tabIndex++;
